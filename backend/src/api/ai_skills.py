@@ -7,14 +7,14 @@ Handles running generic AI skills and reviewing draft AI outputs.
 import logging
 logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Header
-from typing import Optional, List
+from typing import Optional, List, cast, Dict, Any
 from datetime import datetime
 import uuid
 import json
-from src.db.supabase import get_db
-from src.db import memory_db
-from src.services.ai_skills import skill_runner
-from src.models import SkillName, AIReviewStatus
+from ..db.supabase import get_db
+from ..db import memory_db
+from ..services.ai_skills import skill_runner
+from ..models import SkillName, AIReviewStatus
 
 router = APIRouter()
 
@@ -22,12 +22,12 @@ router = APIRouter()
 async def get_review_queue():
     """List all pending AI draft outputs across all matters."""
     db = get_db()
-    queue = []
+    queue: List[Dict[str, Any]] = []
     
     if db:
         try:
             res = db.table("ai_outputs").select("*").eq("review_status", "pending").execute()
-            queue = res.data or []
+            queue = cast(List[Dict[str, Any]], res.data or [])
         except Exception as e:
             logger.error(f'Database operation failed: {e}')
             queue = [a for a in memory_db.AI_OUTPUTS if a["review_status"] == "pending"]
@@ -165,31 +165,32 @@ async def review_ai_output(
         try:
             res = db.table("ai_outputs").select("*").eq("id", output_id).execute()
             if res.data:
-                item = res.data[0]
+                db_item = cast(Dict[str, Any], res.data[0])
                 updates = {
                     "review_status": status,
                     "reviewed_by": user_id,
                     "reviewed_at": reviewed_at,
-                    "final_output": final_output or item["raw_output"],
+                    "final_output": final_output or db_item["raw_output"],
                     "review_notes": review_notes
                 }
                 db.table("ai_outputs").update(updates).eq("id", output_id).execute()
                 
                 # If modified or approved, we might trigger side-effects like updating strategy notes, hearings etc.
                 # E.g. if skill_name is client_update, we approve the hearing's update
-                skill_name_val = item["skill_name"]
-                matter_id = item["matter_id"]
+                skill_name_val = db_item["skill_name"]
+                matter_id = db_item["matter_id"]
 
                 # Side effects:
                 if skill_name_val == SkillName.client_update_email.value and status in ["approved", "modified"]:
                     # Try to find recent hearing and set approved
                     h_res = db.table("hearings").select("*").eq("matter_id", matter_id).order("created_at", desc=True).limit(1).execute()
                     if h_res.data:
+                        hearing_item = cast(Dict[str, Any], h_res.data[0])
                         db.table("hearings").update({
                             "client_update_approved": True,
                             "client_update_sent_at": reviewed_at,
-                            "client_update_draft": final_output or item["raw_output"]
-                        }).eq("id", h_res.data[0]["id"]).execute()
+                            "client_update_draft": final_output or db_item["raw_output"]
+                        }).eq("id", hearing_item["id"]).execute()
 
                 # Audit Log
                 db.table("audit_logs").insert({
@@ -199,34 +200,33 @@ async def review_ai_output(
                     "action": f"ai_output.{status}",
                     "resource_type": "ai_outputs",
                     "resource_id": output_id,
-                    "before_state": item,
-                    "after_state": {**item, **updates}
+                    "before_state": db_item,
+                    "after_state": {**db_item, **updates}
                 }).execute()
 
-                return {**item, **updates}
+                return {**db_item, **updates}
         except Exception as e:
             logger.error(f'Database operation failed: {e}')
 
-    # Fallback to Memory
-    item = next((a for a in memory_db.AI_OUTPUTS if a["id"] == output_id), None)
-    if not item:
+    raw_mem_item = next((a for a in memory_db.AI_OUTPUTS if a["id"] == output_id), None)
+    if not raw_mem_item:
         raise HTTPException(status_code=404, detail="AI Output draft not found")
-
-    before = dict(item)
-    item["review_status"] = status
-    item["reviewed_by"] = user_id
-    item["reviewed_at"] = datetime.now(timezone.utc)
-    item["final_output"] = final_output or item["raw_output"]
-    item["review_notes"] = review_notes
+    mem_item = cast(Dict[str, Any], raw_mem_item)
+    before = dict(mem_item)
+    mem_item["review_status"] = status
+    mem_item["reviewed_by"] = user_id
+    mem_item["reviewed_at"] = datetime.now(timezone.utc)
+    mem_item["final_output"] = final_output or mem_item["raw_output"]
+    mem_item["review_notes"] = review_notes
 
     # Side-effect: Client update approval link
-    if item["skill_name"] == SkillName.client_update_email.value and status in ["approved", "modified"]:
+    if mem_item["skill_name"] == SkillName.client_update_email.value and status in ["approved", "modified"]:
         # Find latest hearing for this matter
-        h = next((hearing for hearing in memory_db.HEARINGS if hearing["matter_id"] == item["matter_id"]), None)
+        h = next((hearing for hearing in memory_db.HEARINGS if hearing["matter_id"] == mem_item["matter_id"]), None)
         if h:
             h["client_update_approved"] = True
             h["client_update_sent_at"] = datetime.now(timezone.utc)
-            h["client_update_draft"] = final_output or item["raw_output"]
+            h["client_update_draft"] = final_output or mem_item["raw_output"]
 
     memory_db.log_audit(
         user_id=user_id,
@@ -234,8 +234,8 @@ async def review_ai_output(
         resource_type="ai_outputs",
         resource_id=output_id,
         before=before,
-        after=item,
-        matter_id=item["matter_id"]
+        after=mem_item,
+        matter_id=mem_item["matter_id"]
     )
 
-    return item
+    return mem_item

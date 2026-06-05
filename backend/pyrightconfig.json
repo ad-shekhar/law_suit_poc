@@ -7,5 +7,11 @@
   "typeCheckingMode": "basic",
   "useLibraryCodeForTypes": true,
   "reportMissingImports": "warning",
-  "reportMissingModuleSource": "none"
+  "reportMissingModuleSource": "none",
+  "extraPaths": ["src/.."],
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ]
 }

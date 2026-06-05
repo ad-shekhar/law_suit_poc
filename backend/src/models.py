@@ -3,7 +3,7 @@ LegalOS — Database Models (Pydantic schemas matching Supabase tables)
 """
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone, timezone
 from enum import Enum
 import uuid
 
@@ -111,8 +111,8 @@ class User(BaseModel):
     role: UserRole
     avatar_url: Optional[str] = None
     is_active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Firm(BaseModel):
@@ -122,7 +122,7 @@ class Firm(BaseModel):
     subscription_tier: str = "poc"
     logo_url: Optional[str] = None
     settings: dict = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Matter(BaseModel):
@@ -146,8 +146,8 @@ class Matter(BaseModel):
     brief_facts: Optional[str] = None
     tags: list[str] = Field(default_factory=list)
     is_confidential: bool = False
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class StrategyNote(BaseModel):
@@ -173,8 +173,8 @@ class StrategyNote(BaseModel):
     ai_output_id: Optional[str] = None
     
     created_by: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Hearing(BaseModel):
@@ -202,7 +202,7 @@ class Hearing(BaseModel):
     client_update_sent_at: Optional[datetime] = None
     
     created_by: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Document(BaseModel):
@@ -216,7 +216,7 @@ class Document(BaseModel):
     embedding_status: str = "pending"  # pending, processing, done, failed
     chunk_count: int = 0
     uploaded_by: str
-    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AIOutput(BaseModel):
@@ -233,7 +233,7 @@ class AIOutput(BaseModel):
     model_used: str = "gemini-1.5-flash"
     tokens_used: int = 0
     latency_ms: int = 0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class Invoice(BaseModel):
@@ -254,7 +254,7 @@ class Invoice(BaseModel):
     due_date: Optional[datetime] = None
     paid_at: Optional[datetime] = None
     payment_reference: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class AuditLog(BaseModel):
@@ -271,4 +271,4 @@ class AuditLog(BaseModel):
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

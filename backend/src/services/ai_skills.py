@@ -13,8 +13,8 @@ from datetime import datetime
 
 import google.generativeai as genai
 
-from src.config import settings
-from src.models import SkillName
+from ..config import settings
+from ..models import SkillName
 
 logger = logging.getLogger(__name__)
 
@@ -240,10 +240,9 @@ class AISkillRunner:
 
     def __init__(self):
         self.mock_mode = settings.ai_mock_mode
+        self.model: Optional[genai.GenerativeModel] = None
         if not self.mock_mode and settings.gemini_api_key:
             self.model = genai.GenerativeModel(settings.gemini_model)
-        else:
-            self.model = None
 
     async def run_skill(
         self,
@@ -304,6 +303,9 @@ class AISkillRunner:
             max_output_tokens=4096,
         )
 
+        if not self.model:
+            raise ValueError("GenerativeModel is not initialized.")
+            
         response = await asyncio.to_thread(
             self.model.generate_content,
             prompt,
