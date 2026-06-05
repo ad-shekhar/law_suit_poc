@@ -5,6 +5,7 @@ import { Scale, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles } from "lucide-rea
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 
 // Demo accounts for POC — no real auth needed
 const DEMO_ACCOUNTS = [
@@ -45,27 +46,29 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    await new Promise((r) => setTimeout(r, 800));
-
-    const account = DEMO_ACCOUNTS.find(
-      (a) => a.email === email && a.password === password
-    );
-
-    if (account) {
+    try {
+      const dbUser = await api.login(email, password);
       // Store in sessionStorage for POC
-      sessionStorage.setItem("legalos_user", JSON.stringify(account));
-      toast.success(`Welcome back, ${account.name.split(" ")[0]}!`);
+      sessionStorage.setItem("legalos_user", JSON.stringify(dbUser));
+      toast.success(`Welcome back, ${dbUser.full_name.split(" ")[0]}!`);
       router.push("/dashboard");
-    } else {
-      toast.error("Invalid credentials. Use a demo account below.");
+    } catch (err: any) {
+      toast.error(err.message || "Invalid credentials. Use a demo account below.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const loginAs = (account: typeof DEMO_ACCOUNTS[0]) => {
-    sessionStorage.setItem("legalos_user", JSON.stringify(account));
-    toast.success(`Logging in as ${account.name}...`);
-    router.push("/dashboard");
+  const loginAs = async (account: typeof DEMO_ACCOUNTS[0]) => {
+    try {
+      toast.loading(`Logging in as ${account.name}...`, { id: "login-toast" });
+      const dbUser = await api.login(account.email, account.password);
+      sessionStorage.setItem("legalos_user", JSON.stringify(dbUser));
+      toast.success(`Logged in as ${dbUser.full_name}!`, { id: "login-toast" });
+      router.push("/dashboard");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to login as demo user", { id: "login-toast" });
+    }
   };
 
   return (

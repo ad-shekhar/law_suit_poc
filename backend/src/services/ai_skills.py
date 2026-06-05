@@ -1,3 +1,4 @@
+from datetime import timezone
 """
 AI Skills Engine — LegalOS
 All 13 AI skills with Gemini integration + mock toggle
@@ -278,10 +279,11 @@ class AISkillRunner:
                 "review_status": "pending",
                 "ai_assisted": True,
                 "human_verified": False,  # CRITICAL: Always starts False
-                "created_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.now(timezone.utc).isoformat(),
             }
 
         except Exception as e:
+            logger.error(f'Database operation failed: {e}')
             logger.error(f"AI Skill {skill_name} failed: {e}")
             raise
 

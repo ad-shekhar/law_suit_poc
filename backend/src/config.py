@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     # App
     environment: str = "development"
     secret_key: str = "dev-secret-key-change-in-production"
+    default_firm_id: str = "7be7a8ff-5cb6-4927-b8d9-2eb4c9bc08ab"
+    default_password: str = "demo1234"
     
     # Supabase
     supabase_url: str = ""
@@ -32,6 +34,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 settings = Settings()

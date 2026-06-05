@@ -1,0 +1,10 @@
+{
+  "venvPath": "backend",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "include": ["backend/src", "backend/main.py"],
+  "exclude": ["**/__pycache__", "backend/.venv"],
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "warning"
+}

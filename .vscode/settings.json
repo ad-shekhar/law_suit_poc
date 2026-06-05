@@ -7,14 +7,15 @@
   "python.analysis.typeCheckingMode": "basic",
   "editor.formatOnSave": true,
   "[python]": {
-    "editor.defaultFormatter": "charliermarsh.ruff"
+    "editor.defaultFormatter": "ms-python.python"
   },
   "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
   "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "editor.defaultFormatter": "vscode.typescript-language-features"
   },
+  "css.lint.unknownAtRules": "ignore",
   "typescript.tsdk": "frontend/node_modules/typescript/lib",
   "typescript.preferences.importModuleSpecifier": "non-relative"
 }
