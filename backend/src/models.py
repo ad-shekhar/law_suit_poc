@@ -128,7 +128,7 @@ class Firm(BaseModel):
 class Matter(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     firm_id: str
-    matter_number: str  # e.g. KPU-2024-001
+    matter_number: str  # e.g. LOS-2024-001
     client_name: str
     client_email: Optional[EmailStr] = None
     client_phone: Optional[str] = None
@@ -239,7 +239,7 @@ class AIOutput(BaseModel):
 class Invoice(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     matter_id: str
-    invoice_number: str  # e.g. KPU-INV-2024-001
+    invoice_number: str  # e.g. LOS-INV-2024-001
     milestone_name: str
     description: Optional[str] = None
     amount: float  # Base amount in INR

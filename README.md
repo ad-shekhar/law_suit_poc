@@ -1,4 +1,4 @@
-# LegalOS — KPU Chambers AI Practice Operating System
+# LegalOS — AI Practice Operating System
 
 > **"Human Generated, AI Assisted"** — India's first compliance-first legal practice OS
 
@@ -152,4 +152,4 @@ law_suit_poc/
 
 ## 📜 License
 
-Private — KPU Chambers © 2026
+Private — LegalOS © 2026

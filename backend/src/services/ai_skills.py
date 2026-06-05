@@ -79,14 +79,14 @@ MOCK_RESPONSES = {
     SkillName.engagement_letter: {
         "letter_html": """<div style="font-family: Georgia, serif; max-width: 700px; padding: 40px;">
 <p style="text-align: right; color: #666;">Date: {date}</p>
-<h2 style="color: #1e3a5f;">KPU Chambers</h2>
+<h2 style="color: #1e3a5f;">LegalOS</h2>
 <p style="color: #666; font-size: 12px;">Senior Advocates | Supreme Court of India & High Courts</p>
 <hr/>
 <p><strong>To,</strong><br/>
 {client_name}<br/>{client_address}</p>
 <h3>RE: Letter of Engagement — {matter_title}</h3>
 <p>Dear Sir/Ma'am,</p>
-<p>We are pleased to confirm your engagement of KPU Chambers to represent you in the above-captioned matter before the {court_name}. This letter sets out the terms of our engagement.</p>
+<p>We are pleased to confirm your engagement to represent you in the above-captioned matter before the {court_name}. This letter sets out the terms of our engagement.</p>
 <h4>1. SCOPE OF WORK</h4>
 <p>{scope_of_work}</p>
 <h4>2. FEE STRUCTURE</h4>
@@ -96,17 +96,17 @@ GST @ 18% applicable on all amounts.</p>
 <h4>3. CONFIDENTIALITY</h4>
 <p>All information shared with us is subject to attorney-client privilege and shall be held in strict confidence.</p>
 <p>Please sign and return a copy of this letter to confirm your acceptance.</p>
-<p>Yours sincerely,<br/><strong>KPU Chambers</strong></p>
+<p>Yours sincerely,<br/><strong>{advocate_name}</strong></p>
 <div style="border-top: 1px solid #ccc; margin-top: 30px; padding-top: 10px;">
 <p>✦ <em>This document was drafted with AI assistance and reviewed by a Senior Advocate before dispatch.</em></p>
 </div></div>""",
-        "requires_fields": ["date", "client_name", "client_address", "matter_title", "court_name", "scope_of_work", "retainer_amount", "hearing_fee"]
+        "requires_fields": ["date", "client_name", "client_address", "matter_title", "court_name", "scope_of_work", "retainer_amount", "hearing_fee", "advocate_name"]
     },
     SkillName.client_update_email: {
-        "subject": "Update on Your Matter — Delhi High Court Hearing | {date}",
+        "subject": "Update on Your Matter — {court_name} Hearing | {date}",
         "body": """Dear {client_name},
 
-I hope this finds you well. I write to update you on today's proceedings before the Delhi High Court.
+I hope this finds you well. I write to update you on today's proceedings before the {court_name}.
 
 **Hearing Summary — {date}**
 Court: {court_name} | Bench: {judge_name}
@@ -123,7 +123,6 @@ Please do not hesitate to reach out if you have any questions.
 
 With warm regards,
 {advocate_name}
-KPU Chambers
 
 ---
 *✦ Human Generated, AI Assisted — This update was reviewed and approved by your advocate before dispatch.*""",
@@ -133,8 +132,8 @@ KPU Chambers
         "invoice_html": """<div style="font-family: Inter, sans-serif; max-width: 800px; padding: 40px; background: white;">
 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 30px;">
   <div>
-    <h2 style="color: #1e3a5f; margin: 0;">KPU Chambers</h2>
-    <p style="color: #666; margin: 4px 0;">Senior Advocates</p>
+    <h2 style="color: #1e3a5f; margin: 0;">LegalOS</h2>
+    <p style="color: #666; margin: 4px 0;">AI Practice Operating System</p>
   </div>
   <div style="text-align: right;">
     <h3 style="color: #4F46E5; margin: 0;">INVOICE</h3>

@@ -1,5 +1,5 @@
 """
-LegalOS — KPU Chambers AI Practice Operating System
+LegalOS — AI Practice Operating System
 FastAPI Backend — Main Entry Point
 """
 from fastapi import FastAPI
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="LegalOS API",
-    description="KPU Chambers AI Practice Operating System — Human Generated, AI Assisted",
+    description="LegalOS — AI Practice Operating System | Human Generated, AI Assisted",
     version="0.1.0-poc",
     lifespan=lifespan,
     docs_url="/api/docs",

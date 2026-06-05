@@ -12,7 +12,9 @@ build/
 *.log
 .venv/
 venv/
+env/
 .mypy_cache/
 .ruff_cache/
 coverage/
 .pytest_cache/
+backend/.venv/
