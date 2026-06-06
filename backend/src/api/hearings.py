@@ -10,10 +10,10 @@ from typing import Optional, List
 from datetime import datetime
 import uuid
 import json
-from src.db.supabase import get_db
-from src.db import memory_db
-from src.services.ai_skills import skill_runner
-from src.models import SkillName, AIReviewStatus
+from ..db.supabase import get_db
+from ..db import memory_db
+from ..services.ai_skills import skill_runner
+from ..models import SkillName, AIReviewStatus
 
 router = APIRouter()
 

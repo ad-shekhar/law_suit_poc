@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Query, Header
 from fastapi.responses import StreamingResponse
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, cast
 import io
 import csv
 from datetime import datetime, timezone
@@ -26,7 +26,7 @@ async def list_audit_logs(
     List audit logs with optional filters.
     """
     db = get_db()
-    logs = []
+    logs: List[Dict[str, Any]] = []
 
     if db:
         try:
@@ -38,12 +38,12 @@ async def list_audit_logs(
             query = query.limit(limit)
             
             res = query.execute()
-            logs = res.data or []
+            logs = cast(List[Dict[str, Any]], res.data or [])
         except Exception as e:
             logger.error(f'Database operation failed: {e}')
-            logs = list(memory_db.AUDIT_LOGS)
+            logs = cast(List[Dict[str, Any]], list(memory_db.AUDIT_LOGS))
     else:
-        logs = list(memory_db.AUDIT_LOGS)
+        logs = cast(List[Dict[str, Any]], list(memory_db.AUDIT_LOGS))
 
     # Filter memory logs if database query failed or wasn't run
     if not db:
@@ -61,7 +61,7 @@ async def list_audit_logs(
             try:
                 u_res = db.table("users").select("*").eq("id", u_id).execute()
                 if u_res.data:
-                    user = u_res.data[0]
+                    user = cast(Dict[str, Any], u_res.data[0])
             except Exception as e:
                 logger.error(f'Database operation failed: {e}')
         log["user_name"] = user["full_name"] if user else "Unknown User"
@@ -79,7 +79,7 @@ async def export_audit_logs(
     Export audit logs as a downloadable CSV stream.
     """
     db = get_db()
-    logs = []
+    logs: List[Dict[str, Any]] = []
 
     if db:
         try:
@@ -87,12 +87,12 @@ async def export_audit_logs(
             if matter_id:
                 query = query.eq("matter_id", matter_id)
             res = query.execute()
-            logs = res.data or []
+            logs = cast(List[Dict[str, Any]], res.data or [])
         except Exception as e:
             logger.error(f'Database operation failed: {e}')
-            logs = list(memory_db.AUDIT_LOGS)
+            logs = cast(List[Dict[str, Any]], list(memory_db.AUDIT_LOGS))
     else:
-        logs = list(memory_db.AUDIT_LOGS)
+        logs = cast(List[Dict[str, Any]], list(memory_db.AUDIT_LOGS))
 
     if not db and matter_id:
         logs = [log for log in logs if log.get("matter_id") == matter_id]

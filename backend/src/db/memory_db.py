@@ -1,14 +1,18 @@
-from ..config import settings
-from datetime import timezone
 """
 In-Memory Mock Database — LegalOS Backend
 Used as a fallback when Supabase is not configured yet.
 """
 import logging
-logger = logging.getLogger(__name__)
-from datetime import datetime, timedelta
 import uuid
 import threading
+from datetime import datetime, timedelta, timezone
+
+from ..config import settings
+
+logger = logging.getLogger(__name__)
+
+# Thread lock for concurrent writes to in-memory lists
+db_lock = threading.Lock()
 
 # ─── SEED DATA ────────────────────────────────────────────────────────────────
 

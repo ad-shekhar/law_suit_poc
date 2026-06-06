@@ -9,9 +9,9 @@ from fastapi import APIRouter, HTTPException, Query, Header
 from typing import List, Optional
 from datetime import datetime
 import uuid
-from src.db.supabase import get_db
-from src.db import memory_db
-from src.models import Matter, MatterStatus, CaseType, CourtType
+from ..db.supabase import get_db
+from ..db import memory_db
+from ..models import Matter, MatterStatus, CaseType, CourtType
 
 router = APIRouter()
 

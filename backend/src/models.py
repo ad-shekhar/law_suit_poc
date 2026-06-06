@@ -3,7 +3,7 @@ LegalOS — Database Models (Pydantic schemas matching Supabase tables)
 """
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Any
-from datetime import datetime, timezone, timezone
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 

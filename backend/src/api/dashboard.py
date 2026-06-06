@@ -4,10 +4,10 @@ Dashboard Router — LegalOS Backend
 import logging
 logger = logging.getLogger(__name__)
 from fastapi import APIRouter, Header, HTTPException
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, cast
 from datetime import datetime, date
-from src.db.supabase import get_db
-from src.db import memory_db
+from ..db.supabase import get_db
+from ..db import memory_db
 
 router = APIRouter()
 
@@ -24,42 +24,42 @@ async def get_dashboard_summary(user_id: Optional[str] = Header(None, alias="X-U
     # 1. Fetch user role
     role = "founder"
     user_email = ""
-    user = next((u for u in memory_db.USERS if u["id"] == user_id), None)
+    user: Optional[Dict[str, Any]] = next((u for u in memory_db.USERS if u["id"] == user_id), None)
     if db and not user:
         try:
             res = db.table("users").select("*").eq("id", user_id).execute()
             if res.data:
-                user = res.data[0]
+                user = cast(Dict[str, Any], res.data[0])
         except Exception as e:
             logger.error(f'Database operation failed: {e}')
             
     if user:
-        role = user["role"]
+        role = user.get("role", "founder")
         user_email = user.get("email", "")
 
     # 2. Fetch all raw data for calculations
-    matters = []
-    hearings = []
-    ai_outputs = []
-    invoices = []
+    matters: List[Dict[str, Any]] = []
+    hearings: List[Dict[str, Any]] = []
+    ai_outputs: List[Dict[str, Any]] = []
+    invoices: List[Dict[str, Any]] = []
 
     if db:
         try:
             # Matters
             m_res = db.table("matters").select("*").execute()
-            matters = m_res.data or []
+            matters = cast(List[Dict[str, Any]], m_res.data) if m_res.data else []
             
             # Hearings
             h_res = db.table("hearings").select("*").execute()
-            hearings = h_res.data or []
+            hearings = cast(List[Dict[str, Any]], h_res.data) if h_res.data else []
             
             # AI outputs
             ai_res = db.table("ai_outputs").select("*").execute()
-            ai_outputs = ai_res.data or []
+            ai_outputs = cast(List[Dict[str, Any]], ai_res.data) if ai_res.data else []
             
             # Invoices
             inv_res = db.table("invoices").select("*").execute()
-            invoices = inv_res.data or []
+            invoices = cast(List[Dict[str, Any]], inv_res.data) if inv_res.data else []
         except Exception as e:
             logger.error(f'Database operation failed: {e}')
             # Fallback
@@ -144,7 +144,7 @@ async def get_today_hearings(user_id: Optional[str] = Header(None, alias="X-User
     if db:
         try:
             res = db.table("hearings").select("*").execute()
-            hearings = res.data or []
+            hearings = cast(List[Dict[str, Any]], res.data) if res.data else []
         except Exception as e:
             logger.error(f'Database operation failed: {e}')
             hearings = list(memory_db.HEARINGS)
@@ -202,7 +202,7 @@ async def get_ai_queue(user_id: Optional[str] = Header(None, alias="X-User-Id"))
             try:
                 m_res = db.table("matters").select("*").eq("id", matter_id).execute()
                 if m_res.data:
-                    matter = m_res.data[0]
+                    matter = cast(Dict[str, Any], m_res.data[0])
             except Exception as e:
                 logger.error(f'Database operation failed: {e}')
         item["matter"] = matter
