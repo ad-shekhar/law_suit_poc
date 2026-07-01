@@ -220,6 +220,10 @@ class Document(BaseModel):
 
 
 class AIOutput(BaseModel):
+    model_config = {
+        "protected_namespaces": ()
+    }
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     matter_id: str
     skill_name: SkillName

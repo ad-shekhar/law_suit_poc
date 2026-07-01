@@ -70,7 +70,7 @@ export default function DashboardPage() {
 
   const isFounder = ["founder", "admin"].includes(user.role);
   const isSenior = ["founder", "admin", "senior_associate"].includes(user.role);
-  const firstName = user.full_name.split(" ")[0];
+  const firstName = (user.full_name || (user as any).name || "User").split(" ")[0];
 
   const stats = summaryData?.stats || [];
   const activities = summaryData?.recent_activity || [];

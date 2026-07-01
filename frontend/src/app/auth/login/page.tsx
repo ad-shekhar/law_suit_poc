@@ -47,10 +47,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const dbUser = await api.login(email, password);
+      const response = await api.login(email, password);
+      const { token, user: dbUser } = response as any;
       // Store in sessionStorage for POC
       sessionStorage.setItem("legalos_user", JSON.stringify(dbUser));
-      toast.success(`Welcome back, ${dbUser.full_name.split(" ")[0]}!`);
+      sessionStorage.setItem("legalos_token", token);
+      const displayName = dbUser.full_name || dbUser.name || "User";
+      toast.success(`Welcome back, ${displayName.split(" ")[0]}!`);
       router.push("/dashboard");
     } catch (err: any) {
       toast.error(err.message || "Invalid credentials. Use a demo account below.");
@@ -62,9 +65,11 @@ export default function LoginPage() {
   const loginAs = async (account: typeof DEMO_ACCOUNTS[0]) => {
     try {
       toast.loading(`Logging in as ${account.name}...`, { id: "login-toast" });
-      const dbUser = await api.login(account.email, account.password);
+      const response = await api.login(account.email, account.password);
+      const { token, user: dbUser } = response as any;
       sessionStorage.setItem("legalos_user", JSON.stringify(dbUser));
-      toast.success(`Logged in as ${dbUser.full_name}!`, { id: "login-toast" });
+      sessionStorage.setItem("legalos_token", token);
+      toast.success(`Logged in as ${dbUser.full_name || dbUser.name || account.name}!`, { id: "login-toast" });
       router.push("/dashboard");
     } catch (err: any) {
       toast.error(err.message || "Failed to login as demo user", { id: "login-toast" });

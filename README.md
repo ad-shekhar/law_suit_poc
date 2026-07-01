@@ -38,14 +38,19 @@ cd law_suit_poc
 # Copy example env
 cp .env.example .env
 # Fill in your Supabase + Gemini keys
+# Important: Set AI_MOCK_MODE=False to use the real Gemini API.
+# Ensure SUPABASE_URL and SUPABASE_ANON_KEY are set for the backend,
+# alongside their NEXT_PUBLIC_ variants for the frontend.
+# Copy your configured .env file into the backend/ and frontend/ folders.
 ```
 
 ### 3. Database Setup
 
 ```bash
-# Apply migrations to Supabase
-cd backend
-python -m scripts.migrate
+# 1. Open backend/src/db/schema.sql
+# 2. Copy the entire file content
+# 3. Paste into your Supabase project's SQL Editor
+# 4. Click "Run" (Select "Run without RLS" for this POC)
 ```
 
 ### 4. Frontend

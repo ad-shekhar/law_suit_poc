@@ -87,6 +87,8 @@ async def login(req: LoginRequest):
 
     # 5. Return token + sanitized user (strip password hash)
     safe_user = {k: v for k, v in user.items() if k != "password_hash"}
+    if "name" not in safe_user and "full_name" in safe_user:
+        safe_user["name"] = safe_user["full_name"]
     return {"token": token, "user": safe_user}
 
 

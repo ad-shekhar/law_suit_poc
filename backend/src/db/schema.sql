@@ -309,15 +309,15 @@ ON CONFLICT (email) DO NOTHING;
 
 -- Paralegal: Vinay Gupta
 INSERT INTO users (id, firm_id, email, full_name, role, is_active)
-VALUES ('d4f8g29d-37eg-77c1-bf6b-12f3d9e0f8d8', '7be7a8ff-5cb6-4927-b8d9-2eb4c9bc08ab', 'paralegal@legalos.dev', 'Vinay Gupta', 'paralegal', true)
+VALUES ('d4f8a29d-37ea-47c1-bf6b-12f3d9e0f8d8', '7be7a8ff-5cb6-4927-b8d9-2eb4c9bc08ab', 'paralegal@legalos.dev', 'Vinay Gupta', 'paralegal', true)
 ON CONFLICT (email) DO NOTHING;
 
 -- Client: Rajesh Kumar
 INSERT INTO users (id, firm_id, email, full_name, role, is_active)
-VALUES ('e5g9h0ae-48fh-88d2-c07c-23f4eaf1f9e9', '7be7a8ff-5cb6-4927-b8d9-2eb4c9bc08ab', 'client@legalos.dev', 'Rajesh Kumar', 'client', true)
+VALUES ('e5a9a0ae-48fa-48d2-c07c-23f4eaf1f9e9', '7be7a8ff-5cb6-4927-b8d9-2eb4c9bc08ab', 'client@legalos.dev', 'Rajesh Kumar', 'client', true)
 ON CONFLICT (email) DO NOTHING;
 
 -- Admin: Admin User
 INSERT INTO users (id, firm_id, email, full_name, role, is_active)
-VALUES ('f6h0i1bf-59gi-99e3-d18d-34g5fbg2faea', '7be7a8ff-5cb6-4927-b8d9-2eb4c9bc08ab', 'admin@legalos.dev', 'Admin User', 'admin', true)
+VALUES ('f6a0a1bf-59aa-49e3-d18d-34a5fba2faea', '7be7a8ff-5cb6-4927-b8d9-2eb4c9bc08ab', 'admin@legalos.dev', 'Admin User', 'admin', true)
 ON CONFLICT (email) DO NOTHING;

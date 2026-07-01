@@ -5,7 +5,16 @@ const nextConfig: NextConfig = {
     serverActions: { allowedOrigins: ["localhost:3000"] },
   },
   images: {
-    domains: ["avatars.githubusercontent.com", "lh3.googleusercontent.com"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+    ],
   },
   env: {
     NEXT_PUBLIC_APP_NAME: "LegalOS",

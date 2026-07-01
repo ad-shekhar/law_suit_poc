@@ -6,6 +6,7 @@ import logging
 import uuid
 import threading
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from ..config import settings
 
@@ -33,6 +34,7 @@ USERS = [
         "firm_id": settings.default_firm_id,
         "email": "founder@legalos.dev",
         "full_name": "Arjun Sharma",
+        "name": "Arjun Sharma",
         "role": "founder",
         "avatar_url": None,
         "is_active": True
@@ -42,6 +44,7 @@ USERS = [
         "firm_id": settings.default_firm_id,
         "email": "senior@legalos.dev",
         "full_name": "Priya Menon",
+        "name": "Priya Menon",
         "role": "senior_associate",
         "avatar_url": None,
         "is_active": True
@@ -51,33 +54,37 @@ USERS = [
         "firm_id": settings.default_firm_id,
         "email": "associate@legalos.dev",
         "full_name": "Riya Singh",
+        "name": "Riya Singh",
         "role": "associate",
         "avatar_url": None,
         "is_active": True
     },
     {
-        "id": "d4f8g29d-37eg-77c1-bf6b-12f3d9e0f8d8",
+        "id": "d4f8a29d-37ea-47c1-bf6b-12f3d9e0f8d8",
         "firm_id": settings.default_firm_id,
         "email": "paralegal@legalos.dev",
         "full_name": "Vinay Gupta",
+        "name": "Vinay Gupta",
         "role": "paralegal",
         "avatar_url": None,
         "is_active": True
     },
     {
-        "id": "e5g9h0ae-48fh-88d2-c07c-23f4eaf1f9e9",
+        "id": "e5a9a0ae-48fa-48d2-c07c-23f4eaf1f9e9",
         "firm_id": settings.default_firm_id,
         "email": "client@legalos.dev",
         "full_name": "Rajesh Kumar",
+        "name": "Rajesh Kumar",
         "role": "client",
         "avatar_url": None,
         "is_active": True
     },
     {
-        "id": "f6h0i1bf-59gi-99e3-d18d-34g5fbg2faea",
+        "id": "f6a0a1bf-59aa-49e3-d18d-34a5fba2faea",
         "firm_id": settings.default_firm_id,
         "email": "admin@legalos.dev",
         "full_name": "Admin User",
+        "name": "Admin User",
         "role": "admin",
         "avatar_url": None,
         "is_active": True
@@ -291,7 +298,7 @@ AI_OUTPUTS = [
     }
 ]
 
-AUDIT_LOGS = [
+AUDIT_LOGS: list[dict[str, Any]] = [
     {
         "id": "al-1",
         "matter_id": "m1-rajesh-kumar",

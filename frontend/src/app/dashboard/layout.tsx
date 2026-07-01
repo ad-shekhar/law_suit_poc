@@ -10,7 +10,10 @@ import {
 } from "lucide-react";
 
 interface User {
-  email: string; role: string; name: string;
+  email: string;
+  role: string;
+  name?: string;
+  full_name?: string;
 }
 
 const NAV_ITEMS = [
@@ -68,7 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const roleConf = ROLE_CONFIG[user.role] || ROLE_CONFIG.associate;
   const visibleNav = NAV_ITEMS.filter((n) => n.roles.includes(user.role));
-  const initials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  const initials = (user.full_name || user.name || "User").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-primary)" }}>
@@ -138,7 +141,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {user.name}
+                {user.full_name || user.name || "User"}
               </div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {user.email}
