@@ -31,6 +31,7 @@ async def list_matters(
     
     # 1. Check user role if user_id is provided
     role = "admin"
+    user = None
     if user_id:
         user = next((u for u in memory_db.USERS if u["id"] == user_id), None)
         if db and not user:
@@ -44,7 +45,7 @@ async def list_matters(
             role = user["role"]
 
     # 2. Query Database
-    if db:
+    if db is not None:
         try:
             query = db.table("matters").select("*")
             
@@ -72,10 +73,10 @@ async def list_matters(
                 s = search.lower()
                 data = [
                     m for m in data 
-                    if s in m["client_name"].lower() 
-                    or s in m["matter_number"].lower() 
-                    or (m["case_number"] and s in m["case_number"].lower())
-                    or (m["court_name"] and s in m["court_name"].lower())
+                    if s in str(m.get("client_name", "")).lower() 
+                    or s in str(m.get("matter_number", "")).lower() 
+                    or (m.get("case_number") and s in str(m.get("case_number")).lower())
+                    or (m.get("court_name") and s in str(m.get("court_name")).lower())
                 ]
             return data
         except Exception as e:
@@ -105,10 +106,10 @@ async def list_matters(
         s = search.lower()
         data = [
             m for m in data 
-            if s in m["client_name"].lower() 
-            or s in m["matter_number"].lower() 
-            or (m.get("case_number") and s in m["case_number"].lower())
-            or (m.get("court_name") and s in m["court_name"].lower())
+            if s in str(m.get("client_name", "")).lower() 
+            or s in str(m.get("matter_number", "")).lower() 
+            or (m.get("case_number") and s in str(m.get("case_number")).lower())
+            or (m.get("court_name") and s in str(m.get("court_name")).lower())
         ]
         
     return data
@@ -118,7 +119,7 @@ async def list_matters(
 async def get_matter(matter_id: str):
     """Get detail of a specific matter."""
     db = get_db()
-    if db:
+    if db is not None:
         try:
             res = db.table("matters").select("*").eq("id", matter_id).execute()
             if res.data and len(res.data) > 0:
@@ -140,7 +141,7 @@ async def create_matter(matter: dict, user_id: Optional[str] = Header(None, alia
     
     db = get_db()
     count = 0
-    if db:
+    if db is not None:
         try:
             res = db.table("matters").select("id").execute()
             count = len(res.data) if res.data else 0
@@ -153,18 +154,30 @@ async def create_matter(matter: dict, user_id: Optional[str] = Header(None, alia
     matter_number = f"LOS-{year}-{count + 101:03d}"
     
     # Assign default founder and fields
+    COURT_LABELS = {
+        "supreme_court": "Supreme Court of India",
+        "high_court": "High Court",
+        "district_court": "District Court",
+        "nclt": "NCLT",
+        "nclat": "NCLAT",
+        "ncdrc": "NCDRC",
+        "arbitral_tribunal": "Arbitral Tribunal",
+        "itat": "ITAT",
+        "drat": "DRAT",
+    }
+    
     new_id = matter.get("id") or str(uuid.uuid4())
     new_matter = {
         "id": new_id,
         "firm_id": settings.default_firm_id,
         "matter_number": matter_number,
         "client_name": matter.get("client_name", "New Client"),
-        "client_email": matter.get("client_email"),
-        "client_phone": matter.get("client_phone"),
+        "client_email": matter.get("client_email") or "",
+        "client_phone": matter.get("client_phone") or "",
         "case_type": matter.get("case_type", "civil_suit"),
         "court": matter.get("court", "high_court"),
-        "court_name": matter.get("court_name", "Delhi High Court"),
-        "case_number": matter.get("case_number"),
+        "court_name": matter.get("court_name") or COURT_LABELS.get(matter.get("court", ""), "Court") or "Court",
+        "case_number": matter.get("case_number") or "",
         "filing_number": matter.get("filing_number"),
         "status": matter.get("status", "intake"),
         "assigned_founder_id": matter.get("assigned_founder_id") or user_id or "a1c5d96a-04bd-449e-8c38-89c0a6b7d5a5",
@@ -179,7 +192,7 @@ async def create_matter(matter: dict, user_id: Optional[str] = Header(None, alia
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
-    if db:
+    if db is not None:
         try:
             db.table("matters").insert(new_matter).execute()
             if user_id:
@@ -200,7 +213,7 @@ async def create_matter(matter: dict, user_id: Optional[str] = Header(None, alia
             # Fall back to memory insert
             pass
             
-    memory_db.MATTERS.insert(0, new_matter)
+    memory_db.MATTERS.append(new_matter)  # type: ignore
     if user_id:
         memory_db.log_audit(
             user_id=user_id,
@@ -223,7 +236,7 @@ async def update_matter_status(
     db = get_db()
     before_state = {}
     
-    if db:
+    if db is not None:
         try:
             # Fetch current
             res = db.table("matters").select("*").eq("id", matter_id).execute()

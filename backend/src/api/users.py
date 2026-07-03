@@ -50,7 +50,7 @@ async def login(req: LoginRequest):
     user = None
 
     # 1. Try Supabase
-    if db:
+    if db is not None:
         try:
             res = db.table("users").select("*").eq("email", req.email).execute()
             if res.data and len(res.data) > 0:
@@ -69,7 +69,7 @@ async def login(req: LoginRequest):
     # For Supabase users that don't have a password_hash yet, accept settings.default_password
     password_hash = user.get("password_hash")
     if password_hash:
-        if not verify_password(req.password, password_hash):
+        if not verify_password(req.password, str(password_hash)):
             raise HTTPException(status_code=400, detail="Invalid credentials")
     else:
         # Supabase row without hash yet — accept default demo password during POC
@@ -96,7 +96,7 @@ async def login(req: LoginRequest):
 async def list_users():
     """List all users in the firm (strips password hashes)."""
     db = get_db()
-    if db:
+    if db is not None:
         try:
             res = db.table("users").select("*").execute()
             return res.data
@@ -110,7 +110,7 @@ async def list_users():
 async def get_user(user_id: str):
     """Get user by ID."""
     db = get_db()
-    if db:
+    if db is not None:
         try:
             res = db.table("users").select("*").eq("id", user_id).execute()
             if res.data:

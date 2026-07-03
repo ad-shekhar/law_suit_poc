@@ -7,6 +7,7 @@ import {
   MapPin, FileText, Hash, CheckCircle, Sparkles, AlertTriangle
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { api } from "@/lib/api";
 
 const STEPS = [
   { id: 1, label: "Client Info", desc: "Basic client details" },
@@ -78,9 +79,27 @@ export default function NewMatterPage() {
   };
 
   const handleCreate = async () => {
-    await new Promise(r => setTimeout(r, 800));
-    toast.success("Matter LOS-2024-007 created successfully!");
-    router.push("/dashboard/matters");
+    try {
+      const newMatterData = {
+        client_name: form.clientName,
+        client_email: form.clientEmail,
+        client_phone: form.clientPhone,
+        case_type: form.caseType,
+        court: form.court,
+        court_name: form.courtName,
+        case_number: form.caseNumber,
+        opposing_party: form.opposingParty,
+        opposing_counsel: form.opposingCounsel,
+        relief_sought: form.reliefSought,
+        brief_facts: form.briefFacts,
+        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+      };
+      const res = await api.createMatter(newMatterData);
+      toast.success(`Matter ${res.matter_number || ""} created successfully!`);
+      router.push("/dashboard/matters");
+    } catch (e) {
+      toast.error("Failed to create matter");
+    }
   };
 
   const canNext = () => {

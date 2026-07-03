@@ -75,6 +75,7 @@ export interface Invoice {
   paid_at?: string | null;
   payment_reference?: string | null;
   created_at: string;
+  matter?: Matter;
 }
 
 export interface AiOutput {

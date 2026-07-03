@@ -21,7 +21,7 @@ router = APIRouter()
 async def get_strategy_note(matter_id: str):
     """Get the current active strategy note for a matter."""
     db = get_db()
-    if db:
+    if db is not None:
         try:
             res = db.table("strategy_notes").select("*").eq("matter_id", matter_id).order("version", desc=True).execute()
             if res.data and len(res.data) > 0:
@@ -69,7 +69,7 @@ async def generate_strategy_note(
     matter = None
     
     # Get matter context
-    if db:
+    if db is not None:
         try:
             res = db.table("matters").select("*").eq("id", matter_id).execute()
             if res.data:
@@ -151,7 +151,7 @@ async def generate_strategy_note(
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
 
-    if db:
+    if db is not None:
         try:
             db.table("ai_outputs").insert(ai_output_record).execute()
             
@@ -178,7 +178,7 @@ async def generate_strategy_note(
         # Remove unlocked drafts
         memory_db.STRATEGY_NOTES = [n for n in memory_db.STRATEGY_NOTES if not (n["matter_id"] == matter_id and not n["is_locked"])]
         
-    memory_db.STRATEGY_NOTES.insert(0, new_note)
+    memory_db.STRATEGY_NOTES.insert(0, new_note)  # type: ignore
     return new_note
 
 
@@ -198,7 +198,7 @@ async def lock_strategy_note(
     locked_at = datetime.now(timezone.utc).isoformat()
     pdf_url = f"https://storage.googleapis.com/legalos-bucket/strategy-notes/{matter_id}-locked.pdf"
 
-    if db:
+    if db is not None:
         try:
             # 1. Fetch current draft strategy note
             sn_res = db.table("strategy_notes").select("*").eq("matter_id", matter_id).eq("is_locked", False).execute()
@@ -270,7 +270,7 @@ async def lock_strategy_note(
         user_id=user_id,
         action="strategy_note.locked",
         resource_type="strategy_notes",
-        resource_id=note["id"],
+        resource_id=str(note["id"]),
         after=note,
         matter_id=matter_id
     )

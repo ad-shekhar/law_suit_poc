@@ -43,7 +43,7 @@ async def get_dashboard_summary(user_id: Optional[str] = Header(None, alias="X-U
     ai_outputs: List[Dict[str, Any]] = []
     invoices: List[Dict[str, Any]] = []
 
-    if db:
+    if db is not None:
         try:
             # Matters
             m_res = db.table("matters").select("*").execute()
@@ -128,10 +128,31 @@ async def get_dashboard_summary(user_id: Optional[str] = Header(None, alias="X-U
             {"label": "Tasks Due", "value": "6", "change": "3 overdue", "up": False, "color": "#EF4444"},
         ]
 
+    recent_activity = []
+    if db is not None:
+        try:
+            audit_res = db.table("audit_logs").select("*").order("created_at", desc=True).limit(6).execute()
+            recent_activity = audit_res.data or []
+            # Resolve user names
+            for log in recent_activity:
+                u = next((u for u in memory_db.USERS if u["id"] == log["user_id"]), None)
+                if not u:
+                    try:
+                        u_res = db.table("users").select("full_name").eq("id", log["user_id"]).execute()
+                        u = u_res.data[0] if u_res.data else None
+                    except Exception:
+                        pass
+                cast(Dict[str, Any], log)["user_name"] = u["full_name"] if u else "Unknown"
+        except Exception as e:
+            logger.error(f'Failed to fetch audit logs: {e}')
+            recent_activity = memory_db.AUDIT_LOGS[:6]
+    else:
+        recent_activity = memory_db.AUDIT_LOGS[:6]
+
     return {
         "role": role,
         "stats": stats,
-        "recent_activity": memory_db.AUDIT_LOGS[:6] if not db else [] # fallback/audit logs
+        "recent_activity": recent_activity
     }
 
 
@@ -141,7 +162,7 @@ async def get_today_hearings(user_id: Optional[str] = Header(None, alias="X-User
     db = get_db()
     hearings = []
     
-    if db:
+    if db is not None:
         try:
             res = db.table("hearings").select("*").execute()
             hearings = cast(List[Dict[str, Any]], res.data) if res.data else []
@@ -172,7 +193,7 @@ async def get_today_hearings(user_id: Optional[str] = Header(None, alias="X-User
                         matter = m_res.data[0]
                 except Exception as e:
                     logger.error(f'Database operation failed: {e}')
-            h["matter"] = matter
+            cast(Dict[str, Any], h)["matter"] = matter
             today_hearings.append(h)
             
     return today_hearings
@@ -184,7 +205,7 @@ async def get_ai_queue(user_id: Optional[str] = Header(None, alias="X-User-Id"))
     db = get_db()
     ai_outputs = []
     
-    if db:
+    if db is not None:
         try:
             res = db.table("ai_outputs").select("*").eq("review_status", "pending").execute()
             ai_outputs = res.data or []
@@ -205,6 +226,6 @@ async def get_ai_queue(user_id: Optional[str] = Header(None, alias="X-User-Id"))
                     matter = cast(Dict[str, Any], m_res.data[0])
             except Exception as e:
                 logger.error(f'Database operation failed: {e}')
-        item["matter"] = matter
+        cast(Dict[str, Any], item)["matter"] = matter
 
     return ai_outputs

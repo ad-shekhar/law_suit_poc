@@ -24,7 +24,7 @@ async def get_review_queue():
     db = get_db()
     queue: List[Dict[str, Any]] = []
     
-    if db:
+    if db is not None:
         try:
             res = db.table("ai_outputs").select("*").eq("review_status", "pending").execute()
             queue = cast(List[Dict[str, Any]], res.data or [])
@@ -38,7 +38,7 @@ async def get_review_queue():
     for item in queue:
         matter_id = item["matter_id"]
         matter = next((m for m in memory_db.MATTERS if m["id"] == matter_id), None)
-        if db and not matter:
+        if db is not None and not matter:
             try:
                 m_res = db.table("matters").select("*").eq("id", matter_id).execute()
                 if m_res.data:
@@ -106,7 +106,7 @@ async def run_ai_skill(
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
-    if db:
+    if db is not None:
         try:
             db.table("ai_outputs").insert(record).execute()
             
@@ -161,7 +161,7 @@ async def review_ai_output(
     db = get_db()
     reviewed_at = datetime.now(timezone.utc).isoformat()
 
-    if db:
+    if db is not None:
         try:
             res = db.table("ai_outputs").select("*").eq("id", output_id).execute()
             if res.data:

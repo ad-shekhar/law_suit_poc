@@ -23,7 +23,7 @@ async def list_all_hearings():
     db = get_db()
     hearings = []
     
-    if db:
+    if db is not None:
         try:
             res = db.table("hearings").select("*").order("hearing_date", desc=True).execute()
             hearings = res.data or []
@@ -37,14 +37,14 @@ async def list_all_hearings():
     for h in hearings:
         matter_id = h["matter_id"]
         matter = next((m for m in memory_db.MATTERS if m["id"] == matter_id), None)
-        if db and not matter:
+        if db is not None and not matter:
             try:
                 m_res = db.table("matters").select("*").eq("id", matter_id).execute()
                 if m_res.data:
                     matter = m_res.data[0]
             except Exception as e:
                 logger.error(f'Database operation failed: {e}')
-        h["matter"] = matter
+        h["matter"] = matter  # type: ignore
         
     return hearings
 
@@ -55,7 +55,7 @@ async def get_matter_hearings(matter_id: str):
     db = get_db()
     hearings = []
     
-    if db:
+    if db is not None:
         try:
             res = db.table("hearings").select("*").eq("matter_id", matter_id).order("hearing_date", desc=True).execute()
             hearings = res.data or []
@@ -83,7 +83,7 @@ async def log_hearing(
     db = get_db()
     matter = None
     
-    if db:
+    if db is not None:
         try:
             res = db.table("matters").select("*").eq("id", matter_id).execute()
             if res.data:
@@ -156,7 +156,7 @@ async def log_hearing(
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
-    if db:
+    if db is not None:
         try:
             db.table("hearings").insert(new_hearing).execute()
             
@@ -242,7 +242,7 @@ async def approve_client_update(
     db = get_db()
     sent_time = datetime.now(timezone.utc).isoformat()
 
-    if db:
+    if db is not None:
         try:
             res = db.table("hearings").select("*").eq("id", hearing_id).execute()
             if res.data:

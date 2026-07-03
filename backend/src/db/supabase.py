@@ -22,17 +22,16 @@ if not settings.supabase_anon_key:
 # Check if keys are placeholders
 is_mock = "your-project" in supabase_url or "your-anon-key" in supabase_key or not supabase_url or not supabase_key
 
+supabase_client: Client | None = None
 if is_mock:
     logger.warning("⚠️ Using mock Supabase Client (env keys not set or placeholder)")
-    supabase_client = None
 else:
     try:
-        supabase_client: Client = create_client(supabase_url, supabase_key)
+        supabase_client = create_client(supabase_url, supabase_key)
         logger.info(f"Connected to Supabase at {supabase_url}")
     except Exception as e:
         logger.error(f'Database operation failed: {e}')
         logger.error(f"❌ Failed to initialize Supabase client: {e}")
-        supabase_client = None
 
 
 def get_db():

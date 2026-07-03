@@ -24,7 +24,7 @@ async def list_all_invoices():
     db = get_db()
     invoices = []
     
-    if db:
+    if db is not None:
         try:
             res = db.table("invoices").select("*").order("created_at", desc=True).execute()
             invoices = res.data or []
@@ -38,14 +38,14 @@ async def list_all_invoices():
     for inv in invoices:
         matter_id = inv["matter_id"]
         matter = next((m for m in memory_db.MATTERS if m["id"] == matter_id), None)
-        if db and not matter:
+        if db is not None and not matter:
             try:
                 m_res = db.table("matters").select("*").eq("id", matter_id).execute()
                 if m_res.data:
                     matter = m_res.data[0]
             except Exception as e:
                 logger.error(f'Database operation failed: {e}')
-        inv["matter"] = matter
+        inv["matter"] = matter  # type: ignore
         
     return invoices
 
@@ -56,7 +56,7 @@ async def get_matter_invoices(matter_id: str):
     db = get_db()
     invoices = []
     
-    if db:
+    if db is not None:
         try:
             res = db.table("invoices").select("*").eq("matter_id", matter_id).order("created_at", desc=True).execute()
             invoices = res.data or []
@@ -90,7 +90,7 @@ async def create_invoice(
 
     db = get_db()
     count = 0
-    if db:
+    if db is not None:
         try:
             res = db.table("invoices").select("id").execute()
             count = len(res.data) if res.data else 0
@@ -142,7 +142,7 @@ async def create_invoice(
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
-    if db:
+    if db is not None:
         try:
             db.table("invoices").insert(new_invoice).execute()
             
@@ -189,7 +189,7 @@ async def approve_invoice(
     db = get_db()
     approved_at = datetime.now(timezone.utc).isoformat()
 
-    if db:
+    if db is not None:
         try:
             res = db.table("invoices").select("*").eq("id", invoice_id).execute()
             if res.data:

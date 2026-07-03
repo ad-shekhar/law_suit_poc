@@ -2,17 +2,8 @@
 import { motion } from "framer-motion";
 import { Shield, Download, Filter, Search } from "lucide-react";
 import { useState } from "react";
-
-const LOGS = [
-  { id: "1", action: "ai_output.approved", resource: "Strategy Note", matter: "LOS-2024-001", user: "Arjun Sharma", role: "founder", time: "2024-06-10 14:32:08", ip: "103.45.x.x" },
-  { id: "2", action: "strategy_note.locked", resource: "Strategy Note v1", matter: "LOS-2024-001", user: "Arjun Sharma", role: "founder", time: "2024-06-10 14:32:45", ip: "103.45.x.x" },
-  { id: "3", action: "hearing.created", resource: "Hearing #3", matter: "LOS-2024-002", user: "Priya Menon", role: "senior_associate", time: "2024-06-10 11:15:22", ip: "182.71.x.x" },
-  { id: "4", action: "ai_skill.triggered", resource: "Skill 12 — Client Email", matter: "LOS-2024-002", user: "Riya Singh", role: "associate", time: "2024-06-10 11:30:44", ip: "182.71.x.x" },
-  { id: "5", action: "matter.created", resource: "LOS-2024-005", matter: "LOS-2024-005", user: "Arjun Sharma", role: "founder", time: "2024-06-09 09:30:00", ip: "103.45.x.x" },
-  { id: "6", action: "invoice.approved", resource: "INV-2024-003", matter: "LOS-2024-003", user: "Arjun Sharma", role: "founder", time: "2024-06-08 16:45:12", ip: "103.45.x.x" },
-  { id: "7", action: "document.uploaded", resource: "Order Sheet 22-05.pdf", matter: "LOS-2024-001", user: "Vinay Gupta", role: "paralegal", time: "2024-06-07 14:20:33", ip: "115.98.x.x" },
-  { id: "8", action: "ai_output.rejected", resource: "Preliminary Research v1", matter: "LOS-2024-005", user: "Priya Menon", role: "senior_associate", time: "2024-06-07 11:05:17", ip: "182.71.x.x" },
-];
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 const ACTION_COLORS: Record<string, string> = {
   "ai_output.approved": "#10B981",
@@ -33,12 +24,18 @@ const ROLE_COLORS: Record<string, string> = {
 
 export default function AuditPage() {
   const [search, setSearch] = useState("");
+  
+  const { data: logs = [], isLoading } = useQuery({
+    queryKey: ["allAuditLogs"],
+    queryFn: () => api.getAuditLogs(),
+  });
 
-  const filtered = LOGS.filter(l =>
+  const filtered = logs.filter((l: any) =>
     search === "" ||
-    l.action.includes(search.toLowerCase()) ||
-    l.user.toLowerCase().includes(search.toLowerCase()) ||
-    l.matter.toLowerCase().includes(search.toLowerCase())
+    (l.action && l.action.toLowerCase().includes(search.toLowerCase())) ||
+    (l.user_name && l.user_name.toLowerCase().includes(search.toLowerCase())) ||
+    (l.matter?.matter_number && l.matter.matter_number.toLowerCase().includes(search.toLowerCase())) ||
+    (l.resource_type && l.resource_type.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -52,9 +49,11 @@ export default function AuditPage() {
             Immutable log of all actions — DPDP Act compliant evidence trail
           </p>
         </div>
-        <button className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", fontSize: 13 }}>
-          <Download size={14} /> Export CSV
-        </button>
+        <a href={api.exportAuditLogsUrl()} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+          <button className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", fontSize: 13 }}>
+            <Download size={14} /> Export CSV
+          </button>
+        </a>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
@@ -83,34 +82,44 @@ export default function AuditPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((log, i) => (
-              <motion.tr key={log.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{
-                      width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
-                      background: ACTION_COLORS[log.action] || "var(--text-muted)"
-                    }} />
-                    <span className="font-mono" style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                      {log.action}
-                    </span>
-                  </div>
-                </td>
-                <td style={{ fontSize: 13 }}>{log.resource}</td>
-                <td><span className="font-mono" style={{ fontSize: 12, color: "var(--accent-indigo)" }}>{log.matter}</span></td>
-                <td style={{ fontSize: 13, fontWeight: 500 }}>{log.user}</td>
-                <td>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, color: ROLE_COLORS[log.role],
-                    background: `${ROLE_COLORS[log.role]}15`, borderRadius: 999, padding: "2px 8px"
-                  }}>
-                    {log.role.replace(/_/g, " ")}
-                  </span>
-                </td>
-                <td className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{log.time}</td>
-                <td className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{log.ip}</td>
-              </motion.tr>
-            ))}
+            {isLoading ? (
+              <tr><td colSpan={7} style={{ textAlign: "center", padding: "20px 0" }}>Loading logs...</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={7} style={{ textAlign: "center", padding: "20px 0" }}>No audit logs found.</td></tr>
+            ) : (
+              filtered.map((log: any, i: number) => (
+                <motion.tr key={log.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}>
+                  <td>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{
+                        width: 8, height: 8, borderRadius: "50%", flexShrink: 0,
+                        background: ACTION_COLORS[log.action] || "var(--text-muted)"
+                      }} />
+                      <span className="font-mono" style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                        {log.action}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ fontSize: 13 }}>{log.resource_type || "—"}</td>
+                  <td><span className="font-mono" style={{ fontSize: 12, color: "var(--accent-indigo)" }}>{log.matter?.matter_number || "—"}</span></td>
+                  <td style={{ fontSize: 13, fontWeight: 500 }}>{log.user_name || "System"}</td>
+                  <td>
+                    {log.user_role && (
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, color: ROLE_COLORS[log.user_role.toLowerCase()] || "#9CA3AF",
+                        background: `${ROLE_COLORS[log.user_role.toLowerCase()] || "#9CA3AF"}15`, borderRadius: 999, padding: "2px 8px"
+                      }}>
+                        {log.user_role.replace(/_/g, " ")}
+                      </span>
+                    )}
+                  </td>
+                  <td className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                    {log.created_at ? new Date(log.created_at).toLocaleString() : "—"}
+                  </td>
+                  <td className="font-mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{log.ip_address || "—"}</td>
+                </motion.tr>
+              ))
+            )}
           </tbody>
         </table>
       </motion.div>

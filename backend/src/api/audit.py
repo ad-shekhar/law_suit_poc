@@ -28,7 +28,7 @@ async def list_audit_logs(
     db = get_db()
     logs: List[Dict[str, Any]] = []
 
-    if db:
+    if db is not None:
         try:
             query = db.table("audit_logs").select("*").order("created_at", desc=True)
             if matter_id:
@@ -46,7 +46,7 @@ async def list_audit_logs(
         logs = cast(List[Dict[str, Any]], list(memory_db.AUDIT_LOGS))
 
     # Filter memory logs if database query failed or wasn't run
-    if not db:
+    if db is None:
         if matter_id:
             logs = [log for log in logs if log.get("matter_id") == matter_id]
         if action:
@@ -57,7 +57,7 @@ async def list_audit_logs(
     for log in logs:
         u_id = log["user_id"]
         user = next((u for u in memory_db.USERS if u["id"] == u_id), None)
-        if db and not user:
+        if db is not None and not user:
             try:
                 u_res = db.table("users").select("*").eq("id", u_id).execute()
                 if u_res.data:
@@ -81,7 +81,7 @@ async def export_audit_logs(
     db = get_db()
     logs: List[Dict[str, Any]] = []
 
-    if db:
+    if db is not None:
         try:
             query = db.table("audit_logs").select("*").order("created_at", desc=True)
             if matter_id:
@@ -94,7 +94,7 @@ async def export_audit_logs(
     else:
         logs = cast(List[Dict[str, Any]], list(memory_db.AUDIT_LOGS))
 
-    if not db and matter_id:
+    if db is None and matter_id:
         logs = [log for log in logs if log.get("matter_id") == matter_id]
 
     # Resolve user details

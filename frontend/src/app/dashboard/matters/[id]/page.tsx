@@ -10,51 +10,10 @@ import {
   Plus, ArrowRight
 } from "lucide-react";
 import toast from "react-hot-toast";
-
-const MATTER = {
-  id: "1", number: "LOS-2024-001",
-  client: "Rajesh Kumar Enterprises Pvt. Ltd.",
-  clientEmail: "rajesh@rkenterprises.com",
-  case_type: "Arbitration", court: "Delhi High Court",
-  case_number: "OMP-2024-001", status: "active",
-  associate: "Priya Menon", founder: "Arjun Sharma",
-  opposing_party: "ABC Infrastructure Ltd.",
-  opposing_counsel: "Adv. Suresh Patel",
-  relief_sought: "Recovery of ₹2.5 Crore with interest under Section 37",
-  brief_facts: "Client entered construction contract March 2022. Opposing party defaulted on ₹2.5 Cr payments. Arbitration clause exists.",
-  tags: ["arbitration", "recovery", "construction"],
-  created_at: "2024-05-15",
-};
-
-const STRATEGY_NOTE = {
-  exists: true, locked: true,
-  locked_by: "Arjun Sharma", locked_at: "2024-05-20",
-  legal_position: "Strong. Client holds valid arbitral award. Post-2015 amendment, enforcement is ministerial.",
-  key_arguments: [
-    "Award is a decree — enforcement under S.36 maintainable",
-    "No automatic stay post-2015 amendment (BCCI v. Kochi precedent)",
-    "S.9 application for asset attachment recommended",
-  ],
-  risks: [
-    { risk: "S.34 challenge filing", severity: "medium", mitigation: "File execution immediately" },
-    { risk: "Asset transfer pre-attachment", severity: "high", mitigation: "Emergency S.9 this week" },
-  ],
-  recommended_strategy: "Two-track: File S.36 execution immediately + S.9 for asset attachment. Parallel settlement negotiation.",
-  next_actions: ["File S.36 by this week", "Asset search via CERSAI", "Send final demand notice"],
-};
-
-const HEARINGS = [
-  { id: "1", date: "2024-06-10", court_room: "Court Room 4", judge: "Justice A. Sharma",
-    outcome: "Counter-affidavit directed in 4 weeks", next_date: "2024-07-08", client_update_sent: true },
-  { id: "2", date: "2024-05-22", court_room: "Court Room 7", judge: "Justice A. Sharma",
-    outcome: "Notice issued to respondent. Hearing adjourned.", next_date: "2024-06-10", client_update_sent: true },
-];
-
-const AI_OUTPUTS = [
-  { id: "1", skill: "Strategy Note (Skill 03)", status: "approved", created: "2024-05-20", reviewed_by: "Arjun Sharma" },
-  { id: "2", skill: "Engagement Letter (Skill 04)", status: "approved", created: "2024-05-16", reviewed_by: "Arjun Sharma" },
-  { id: "3", skill: "Client Update Email (Skill 12)", status: "pending", created: "2024-06-10", reviewed_by: null },
-];
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { format } from "date-fns";
+import { Matter, Hearing, AiOutput, Invoice } from "@/lib/types";
 
 const TABS = ["Overview", "Strategy Note", "Hearings", "Documents", "Invoices", "AI Trail", "Audit"];
 
@@ -62,20 +21,107 @@ const STATUS_COLORS: Record<string, string> = {
   approved: "var(--accent-emerald)", pending: "var(--accent-gold)", rejected: "var(--accent-red)"
 };
 
+const SKILL_MAP: Record<string, string> = {
+  "Strategy Note": "skill_03_strategy_note",
+  "Engagement Letter": "skill_04_engagement_letter",
+  "Preliminary Research": "skill_02_preliminary_research",
+  "Client Update Email": "skill_12_client_update",
+  "Invoice Draft": "skill_11_invoice_generation",
+  "Hearing Summary": "skill_09_hearing_summary",
+};
+
 export default function MatterDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const matterId = params.id as string;
+  const queryClient = useQueryClient();
+
   const [activeTab, setActiveTab] = useState("Overview");
   const [generatingAI, setGeneratingAI] = useState(false);
   const [showGenerateMenu, setShowGenerateMenu] = useState(false);
 
-  const triggerAI = async (skill: string) => {
+  const { data: matter, isLoading: matterLoading } = useQuery({
+    queryKey: ["matter", matterId],
+    queryFn: () => api.getMatter(matterId),
+  });
+
+  const { data: strategyNote } = useQuery({
+    queryKey: ["strategy", matterId],
+    queryFn: () => api.getStrategy(matterId),
+  });
+
+  const { data: hearings = [] } = useQuery({
+    queryKey: ["hearings", matterId],
+    queryFn: () => api.getHearings(matterId),
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ["invoices", matterId],
+    queryFn: () => api.getInvoices(matterId),
+  });
+
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ["auditLogs", matterId],
+    queryFn: () => api.getAuditLogs(matterId),
+  });
+
+  // Filter ai outputs from the audit logs
+  const aiOutputs = auditLogs.filter((log: any) => log.action.startsWith("ai_"));
+
+  const runAiMutation = useMutation({
+    mutationFn: (skillName: string) => api.runAiSkill(skillName, matterId, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["auditLogs", matterId] });
+      toast.success("AI skill completed — check AI Trail tab");
+      setGeneratingAI(false);
+    },
+    onError: () => {
+      toast.error("AI generation failed");
+      setGeneratingAI(false);
+    }
+  });
+
+  const lockMutation = useMutation({
+    mutationFn: () => api.lockStrategy(matterId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["strategy", matterId] });
+      toast.success("Strategy note locked!");
+    },
+  });
+
+  const triggerAI = (skill: string) => {
     setShowGenerateMenu(false);
     setGeneratingAI(true);
-    await new Promise(r => setTimeout(r, 2200));
-    setGeneratingAI(false);
-    toast.success(`${skill} generated — awaiting your review in AI Trail`);
+    const backendSkillName = SKILL_MAP[skill] || "skill_01_matter_intake";
+    runAiMutation.mutate(backendSkillName);
   };
+
+  if (matterLoading || !matter) {
+    return <div style={{ padding: 40, textAlign: "center" }}>Loading matter...</div>;
+  }
+
+  // Map variables to the new dynamic data
+  const M_NUMBER = matter.matter_number || "—";
+  const M_CASE_NUMBER = matter.case_number || "—";
+  const M_STATUS = matter.status || "—";
+  const M_CLIENT = matter.client_name || "—";
+  const M_COURT = matter.court_name || "—";
+  const M_CASE_TYPE = (matter.case_type || "").replace(/_/g, " ");
+  const M_ASSOCIATE = "Associate";
+  const M_TAGS = matter.tags || [];
+  const M_OPPOSING_PARTY = matter.opposing_party || "—";
+  const M_OPPOSING_COUNSEL = matter.opposing_counsel || "—";
+  const M_RELIEF_SOUGHT = matter.relief_sought || "—";
+
+  const S_EXISTS = !!strategyNote?.legal_position;
+  const S_LOCKED = strategyNote?.is_locked;
+  const S_LOCKED_BY = strategyNote?.locked_by || "Founder"; 
+  const S_LOCKED_AT = strategyNote?.locked_at ? format(new Date(strategyNote.locked_at), "yyyy-MM-dd HH:mm") : "—";
+  const S_LEGAL_POS = strategyNote?.legal_position;
+  const S_KEY_ARGS = strategyNote?.key_arguments || [];
+  const S_RISKS = strategyNote?.risks || [];
+  const S_REC_STRAT = strategyNote?.recommended_strategy;
+  const S_NEXT_ACTS = strategyNote?.next_actions || [];
 
   return (
     <div>
@@ -95,28 +141,28 @@ export default function MatterDetailPage() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <span className="font-mono" style={{ fontSize: 13, color: "var(--accent-indigo)", fontWeight: 700 }}>
-                {MATTER.number}
+                {M_NUMBER}
               </span>
               <span style={{ color: "var(--border)" }}>·</span>
-              <span className="font-mono" style={{ fontSize: 13, color: "var(--text-muted)" }}>{MATTER.case_number}</span>
-              <span className="badge badge-active" style={{ fontSize: 10 }}>{MATTER.status}</span>
+              <span className="font-mono" style={{ fontSize: 13, color: "var(--text-muted)" }}>{M_CASE_NUMBER}</span>
+              <span className="badge badge-active" style={{ fontSize: 10 }}>{M_STATUS}</span>
             </div>
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 6 }}>
-              {MATTER.client}
+              {M_CLIENT}
             </h1>
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <Scale size={13} color="var(--accent-indigo)" /> {MATTER.court}
+                <Scale size={13} color="var(--accent-indigo)" /> {M_COURT}
               </span>
               <span>·</span>
-              <span>{MATTER.case_type}</span>
+              <span>{M_CASE_TYPE}</span>
               <span>·</span>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <Users size={13} /> {MATTER.associate}
+                <Users size={13} /> {M_ASSOCIATE}
               </span>
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-              {MATTER.tags.map(tag => (
+              {M_TAGS.map((tag: string) => (
                 <span key={tag} style={{
                   background: "var(--bg-elevated)", color: "var(--text-muted)",
                   borderRadius: 6, padding: "2px 10px", fontSize: 11
@@ -219,12 +265,12 @@ export default function MatterDetailPage() {
                   </h3>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                     {[
-                      ["Client", MATTER.client],
-                      ["Case Type", MATTER.case_type],
-                      ["Court", MATTER.court],
-                      ["Case Number", MATTER.case_number],
-                      ["Opposing Party", MATTER.opposing_party],
-                      ["Opposing Counsel", MATTER.opposing_counsel],
+                      ["Client", M_CLIENT],
+                      ["Case Type", M_CASE_TYPE],
+                      ["Court", M_COURT],
+                      ["Case Number", M_CASE_NUMBER],
+                      ["Opposing Party", M_OPPOSING_PARTY],
+                      ["Opposing Counsel", M_OPPOSING_COUNSEL],
                     ].map(([k, v]) => (
                       <div key={k}>
                         <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>{k}</div>
@@ -233,17 +279,17 @@ export default function MatterDetailPage() {
                     ))}
                     <div style={{ gridColumn: "1/-1" }}>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 3 }}>Relief Sought</div>
-                      <div style={{ fontSize: 14, lineHeight: 1.5 }}>{MATTER.relief_sought}</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.5 }}>{M_RELIEF_SOUGHT}</div>
                     </div>
                   </div>
                 </div>
                 {/* Strategy Note Preview */}
-                {STRATEGY_NOTE.exists && (
+                {S_EXISTS && (
                   <div className="ai-output-box" style={{ padding: "28px 24px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 10, marginBottom: 16 }}>
                       <h3 style={{ fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", gap: 7 }}>
                         <Brain size={15} color="var(--accent-indigo)" /> Strategy Note
-                        {STRATEGY_NOTE.locked && (
+                        {S_LOCKED && (
                           <span className="badge badge-locked" style={{ fontSize: 10 }}>
                             <Lock size={9} /> Locked
                           </span>
@@ -254,10 +300,10 @@ export default function MatterDetailPage() {
                       </button>
                     </div>
                     <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-secondary)", marginBottom: 14 }}>
-                      {STRATEGY_NOTE.legal_position}
+                      {S_LEGAL_POS}
                     </div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {STRATEGY_NOTE.next_actions.map((a, i) => (
+                      {S_NEXT_ACTS.map((a: string, i: number) => (
                         <span key={i} style={{
                           background: "rgba(79,70,229,0.1)", color: "#818CF8",
                           borderRadius: 6, padding: "3px 10px", fontSize: 12,
@@ -269,7 +315,7 @@ export default function MatterDetailPage() {
                     </div>
                     <div style={{ marginTop: 14, fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 6 }}>
                       <Shield size={12} color="var(--accent-gold)" />
-                      Locked by {STRATEGY_NOTE.locked_by} on {STRATEGY_NOTE.locked_at} · Immutable record
+                      Locked by {S_LOCKED_BY} on {S_LOCKED_AT} · Immutable record
                     </div>
                   </div>
                 )}
@@ -296,14 +342,16 @@ export default function MatterDetailPage() {
                   <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 14 }}>
                     AI Review Status
                   </h3>
-                  {AI_OUTPUTS.map((o) => (
+                  {aiOutputs.map((o: any) => (
                     <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLORS[o.status], flexShrink: 0 }} />
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLORS[o.action === "ai_output.approved" ? "approved" : "pending"], flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 500 }}>{o.skill}</div>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{o.created}</div>
+                        <div style={{ fontSize: 12, fontWeight: 500 }}>{o.resource_type || "Skill Output"}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{format(new Date(o.created_at), "yyyy-MM-dd")}</div>
                       </div>
-                      <span className={`badge badge-${o.status}`} style={{ fontSize: 10 }}>{o.status}</span>
+                      <span className={`badge badge-${o.action === "ai_output.approved" ? "approved" : "pending"}`} style={{ fontSize: 10 }}>
+                        {o.action === "ai_output.approved" ? "approved" : "pending"}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -318,10 +366,10 @@ export default function MatterDetailPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16, marginBottom: 24 }}>
                   <h2 style={{ fontSize: 18, fontWeight: 800 }}>Strategy Note v1</h2>
                   <div style={{ display: "flex", gap: 8 }}>
-                    {STRATEGY_NOTE.locked
+                    {S_LOCKED
                       ? <span className="badge badge-locked pulse-gold"><Lock size={11} /> Locked — Immutable</span>
-                      : <button className="btn-gold" style={{ padding: "8px 16px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                          <Lock size={13} /> Lock Note
+                      : <button className="btn-gold" style={{ padding: "8px 16px", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }} onClick={() => lockMutation.mutate()} disabled={lockMutation.isPending}>
+                          <Lock size={13} /> {lockMutation.isPending ? "Locking..." : "Lock Note"}
                         </button>
                     }
                   </div>
@@ -331,14 +379,14 @@ export default function MatterDetailPage() {
                     <h3 style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
                       Legal Position
                     </h3>
-                    <p style={{ fontSize: 14, lineHeight: 1.7, color: "var(--text-secondary)" }}>{STRATEGY_NOTE.legal_position}</p>
+                    <p style={{ fontSize: 14, lineHeight: 1.7, color: "var(--text-secondary)" }}>{S_LEGAL_POS}</p>
                   </section>
                   <div className="divider" />
                   <section>
                     <h3 style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
                       Key Arguments
                     </h3>
-                    {STRATEGY_NOTE.key_arguments.map((a, i) => (
+                    {S_KEY_ARGS.map((a: string, i: number) => (
                       <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
                         <div style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(79,70,229,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
                           <span style={{ fontSize: 10, fontWeight: 800, color: "var(--accent-indigo)" }}>{i + 1}</span>
@@ -352,7 +400,7 @@ export default function MatterDetailPage() {
                     <h3 style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
                       Risk Assessment
                     </h3>
-                    {STRATEGY_NOTE.risks.map((r, i) => (
+                    {S_RISKS.map((r: any, i: number) => (
                       <div key={i} style={{
                         marginBottom: 10, padding: "12px 14px", borderRadius: 10,
                         background: r.severity === "high" ? "rgba(239,68,68,0.07)" : "rgba(217,119,6,0.07)",
@@ -372,14 +420,14 @@ export default function MatterDetailPage() {
                     <h3 style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
                       Recommended Strategy
                     </h3>
-                    <p style={{ fontSize: 14, lineHeight: 1.7 }}>{STRATEGY_NOTE.recommended_strategy}</p>
+                    <p style={{ fontSize: 14, lineHeight: 1.7 }}>{S_REC_STRAT}</p>
                   </section>
                   <div className="divider" />
                   <section>
                     <h3 style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
                       Next Actions
                     </h3>
-                    {STRATEGY_NOTE.next_actions.map((a, i) => (
+                    {S_NEXT_ACTS.map((a: string, i: number) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                         <CheckCircle size={14} color="var(--accent-emerald)" />
                         <span style={{ fontSize: 14 }}>{a}</span>
@@ -390,7 +438,7 @@ export default function MatterDetailPage() {
                 <div style={{ marginTop: 24, padding: "12px 16px", background: "rgba(217,119,6,0.07)", borderRadius: 10, border: "1px solid rgba(217,119,6,0.2)", display: "flex", alignItems: "center", gap: 10 }}>
                   <Shield size={14} color="var(--accent-gold)" />
                   <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                    Locked by <strong>{STRATEGY_NOTE.locked_by}</strong> on {STRATEGY_NOTE.locked_at} · This note is immutable and archived to PDF
+                    Locked by <strong>{S_LOCKED_BY}</strong> on {S_LOCKED_AT} · This note is immutable and archived to PDF
                   </span>
                 </div>
               </div>
@@ -410,7 +458,7 @@ export default function MatterDetailPage() {
                   <h3 style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Versions</h3>
                   <div style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "rgba(79,70,229,0.1)", borderRadius: 8 }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent-indigo)" }} />
-                    v1 · {STRATEGY_NOTE.locked_at} · Current
+                    v1 · {S_LOCKED_AT} · Current
                   </div>
                 </div>
               </div>
@@ -427,7 +475,7 @@ export default function MatterDetailPage() {
                 </button>
               </div>
               <div className="timeline">
-                {HEARINGS.map((h, i) => (
+                {hearings.map((h: Hearing, i: number) => (
                   <motion.div
                     key={h.id}
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }}
@@ -439,20 +487,20 @@ export default function MatterDetailPage() {
                         <div>
                           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
                             <Calendar size={13} color="var(--accent-indigo)" />
-                            {new Date(h.date).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                            {new Date(h.hearing_date).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
                           </div>
                           <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10 }}>
-                            {h.judge} · {h.court_room}
+                            {h.judge_name || "—"} · {h.court_room || "—"}
                           </div>
-                          <div style={{ fontSize: 14, lineHeight: 1.6 }}>{h.outcome}</div>
-                          {h.next_date && (
+                          <div style={{ fontSize: 14, lineHeight: 1.6 }}>{h.outcome || "—"}</div>
+                          {h.adjourned_to && (
                             <div style={{ fontSize: 13, color: "var(--accent-indigo)", marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}>
-                              <ArrowRight size={12} /> Next: {new Date(h.next_date).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}
+                              <ArrowRight size={12} /> Next: {new Date(h.adjourned_to).toLocaleDateString("en-IN", { day: "numeric", month: "long" })}
                             </div>
                           )}
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-                          {h.client_update_sent
+                          {h.client_update_approved
                             ? <span className="badge badge-approved" style={{ fontSize: 10 }}><Send size={9} /> Client notified</span>
                             : <button className="btn-gold" style={{ fontSize: 11, padding: "5px 10px", display: "flex", alignItems: "center", gap: 5 }}>
                                 <Brain size={11} /> Generate Update
@@ -488,30 +536,33 @@ export default function MatterDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {AI_OUTPUTS.map((o) => (
-                      <tr key={o.id}>
-                        <td>
-                          <span className="badge badge-ai" style={{ fontSize: 11 }}>
-                            <Brain size={10} /> {o.skill}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`badge badge-${o.status}`} style={{ fontSize: 11 }}>
-                            {o.status === "approved" && <CheckCircle size={10} />}
-                            {o.status === "pending" && <Clock size={10} />}
-                            {o.status}
-                          </span>
-                        </td>
-                        <td style={{ fontSize: 13, color: "var(--text-secondary)" }}>{o.created}</td>
-                        <td style={{ fontSize: 13 }}>{o.reviewed_by || <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
-                        <td>
-                          {o.status === "pending"
-                            ? <button className="btn-primary" style={{ padding: "5px 12px", fontSize: 12 }}>Review</button>
-                            : <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }}>View</button>
-                          }
-                        </td>
-                      </tr>
-                    ))}
+                    {aiOutputs.map((o: any) => {
+                      const status = o.action.includes("approved") ? "approved" : "pending";
+                      return (
+                        <tr key={o.id}>
+                          <td>
+                            <span className="badge badge-ai" style={{ fontSize: 11 }}>
+                              <Brain size={10} /> {o.resource_type || "Skill"}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`badge badge-${status}`} style={{ fontSize: 11 }}>
+                              {status === "approved" && <CheckCircle size={10} />}
+                              {status === "pending" && <Clock size={10} />}
+                              {status}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: 13, color: "var(--text-secondary)" }}>{format(new Date(o.created_at), "yyyy-MM-dd HH:mm")}</td>
+                          <td style={{ fontSize: 13 }}>{o.user_name || <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+                          <td>
+                            {status === "pending"
+                              ? <button className="btn-primary" style={{ padding: "5px 12px", fontSize: 12 }}>Review</button>
+                              : <button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }}>View</button>
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -524,26 +575,31 @@ export default function MatterDetailPage() {
               <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Audit Trail</h2>
               <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 20 }}>Complete log of all actions on this matter</p>
               <div className="timeline">
-                {[
-                  { action: "Strategy note locked", user: "Arjun Sharma", time: "2024-05-20 14:32", role: "founder", icon: Lock, color: "#D97706" },
-                  { action: "AI output approved (Strategy Note)", user: "Arjun Sharma", time: "2024-05-20 14:28", role: "founder", icon: CheckCircle, color: "#10B981" },
-                  { action: "Strategy note generated by AI", user: "Priya Menon", time: "2024-05-20 11:15", role: "senior_associate", icon: Brain, color: "#6366F1" },
-                  { action: "Engagement letter approved", user: "Arjun Sharma", time: "2024-05-17 10:00", role: "founder", icon: CheckCircle, color: "#10B981" },
-                  { action: "Matter created", user: "Arjun Sharma", time: "2024-05-15 09:30", role: "founder", icon: Activity, color: "#06B6D4" },
-                ].map((e, i) => (
-                  <div key={i} className="timeline-item">
-                    <div className="timeline-dot" style={{ background: e.color, boxShadow: `0 0 6px ${e.color}60` }} />
-                    <div style={{ display: "flex", justifyContent: "space-between" }}>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{e.action}</div>
-                        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                          {e.user} · <span className={`role-${e.role}`}>{e.role}</span>
+                {auditLogs.map((e: any, i: number) => {
+                  let color = "#D97706";
+                  let Icon = Activity;
+                  if (e.action.includes("approved")) { color = "#10B981"; Icon = CheckCircle; }
+                  else if (e.action.includes("ai")) { color = "#6366F1"; Icon = Brain; }
+                  else if (e.action.includes("locked")) { color = "#D97706"; Icon = Lock; }
+                  else if (e.action.includes("created")) { color = "#06B6D4"; Icon = Plus; }
+                  
+                  return (
+                    <div key={i} className="timeline-item">
+                      <div className="timeline-dot" style={{ background: color, boxShadow: `0 0 6px ${color}60` }} />
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{e.action}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                            {e.user_name || "User"} · <span className={`role-${e.user_role}`}>{e.user_role?.replace(/_/g, " ")}</span>
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
+                          {format(new Date(e.created_at), "yyyy-MM-dd HH:mm")}
                         </div>
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>{e.time}</div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
