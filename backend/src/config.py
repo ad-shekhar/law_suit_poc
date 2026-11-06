@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # Google Gemini
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     
     # AI Settings
     ai_mock_mode: bool = True  # Toggle to False when ready for real AI calls

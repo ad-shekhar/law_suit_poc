@@ -27,11 +27,17 @@ if is_mock:
     logger.warning("⚠️ Using mock Supabase Client (env keys not set or placeholder)")
 else:
     try:
+        # Validate DNS resolution before binding client to avoid per-request timeouts
+        from urllib.parse import urlparse
+        import socket
+        host = urlparse(supabase_url).hostname
+        if host:
+            socket.gethostbyname(host)
         supabase_client = create_client(supabase_url, supabase_key)
         logger.info(f"Connected to Supabase at {supabase_url}")
     except Exception as e:
-        logger.error(f'Database operation failed: {e}')
-        logger.error(f"❌ Failed to initialize Supabase client: {e}")
+        logger.warning(f"⚠️ Supabase endpoint '{supabase_url}' unreachable ({e}). Defaulting to memory_db fallback.")
+        supabase_client = None
 
 
 def get_db():

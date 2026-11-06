@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Briefcase, Search, Filter, Plus, ArrowRight,
   Scale, Calendar, Clock, ChevronRight, Tag,
-  AlertCircle, CheckCircle, FileText, Users
+  AlertCircle, CheckCircle, FileText, Users, Sparkles
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -65,16 +65,28 @@ export default function MattersPage() {
             {filtered.length} matters · {filtered.filter((m: Matter) => !m.status?.startsWith("closed")).length} active
           </p>
         </div>
-        <Link href="/dashboard/matters/new">
-          <motion.button
-            id="create-matter-btn"
-            className="btn-primary"
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px" }}
-            whileHover={{ scale: 1.02 }}
-          >
-            <Plus size={16} /> New Matter
-          </motion.button>
-        </Link>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link href="/dashboard/matters/intake">
+            <motion.button
+              id="ai-intake-btn"
+              className="btn-secondary"
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px" }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <Sparkles size={15} color="var(--accent-indigo)" /> AI Intake
+            </motion.button>
+          </Link>
+          <Link href="/dashboard/matters/new">
+            <motion.button
+              id="create-matter-btn"
+              className="btn-primary"
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px" }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <Plus size={16} /> New Matter
+            </motion.button>
+          </Link>
+        </div>
       </div>
 
       {/* Controls */}

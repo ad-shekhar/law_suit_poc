@@ -58,24 +58,38 @@ export default function NewMatterPage() {
   const runAIExtraction = async () => {
     if (!emailText.trim()) return toast.error("Paste email text first");
     setAiLoading(true);
-    // Simulate AI extraction
-    await new Promise(r => setTimeout(r, 2000));
-    setForm(f => ({
-      ...f,
-      clientName: "Rajesh Kumar Enterprises Pvt. Ltd.",
-      clientEmail: "rajesh@rkenterprises.com",
-      clientPhone: "+91-9876543210",
-      caseType: "arbitration",
-      court: "high_court",
-      courtName: "Delhi High Court",
-      opposingParty: "ABC Infrastructure Ltd.",
-      reliefSought: "Recovery of ₹2.5 Crore with interest under Section 37 of the Arbitration Act",
-      briefFacts: "Client entered a construction contract dated March 15, 2022. Opposing party defaulted on payments totaling ₹2.5 Cr despite multiple reminders. Arbitration clause exists (Clause 23).",
-      tags: "arbitration, recovery, construction",
-    }));
-    setAiLoading(false);
-    setAiDone(true);
-    toast.success("AI extracted matter details from email");
+    try {
+      const res = await api.runAiSkill("skill_01_matter_intake", "new-intake", { input_text: emailText });
+      let extracted: any = {};
+      if (res && res.raw_output) {
+        try {
+          extracted = JSON.parse(res.raw_output);
+        } catch {
+          // In case of non-json raw string
+          extracted = {};
+        }
+      }
+      setForm(f => ({
+        ...f,
+        clientName: extracted.client_name || f.clientName || "New Client",
+        clientEmail: extracted.client_email || f.clientEmail || "",
+        clientPhone: extracted.client_phone || f.clientPhone || "",
+        caseType: extracted.case_type || f.caseType || "civil_suit",
+        court: extracted.court || f.court || "high_court",
+        courtName: extracted.court_name || f.courtName || COURT_LABELS[extracted.court] || "High Court",
+        opposingParty: extracted.opposing_party || f.opposingParty || "",
+        reliefSought: extracted.relief_sought || f.reliefSought || "",
+        briefFacts: extracted.brief_facts || f.briefFacts || emailText,
+        tags: Array.isArray(extracted.suggested_tags) ? extracted.suggested_tags.join(", ") : (extracted.suggested_tags || f.tags || ""),
+      }));
+      setAiDone(true);
+      toast.success("AI extracted matter details from email!");
+      setStep(4); // Advance to Review step
+    } catch (err: any) {
+      toast.error(err.message || "AI extraction failed. You can still fill the fields manually.");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const handleCreate = async () => {

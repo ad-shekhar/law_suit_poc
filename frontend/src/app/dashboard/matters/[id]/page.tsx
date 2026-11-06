@@ -7,13 +7,16 @@ import {
   ArrowLeft, Scale, Calendar, FileText, Brain, Receipt,
   Lock, CheckCircle, Clock, Users, Sparkles, AlertTriangle,
   ChevronRight, Shield, Activity, Edit3, Send, Download,
-  Plus, ArrowRight
+  Plus, ArrowRight, Eye
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { format } from "date-fns";
 import { Matter, Hearing, AiOutput, Invoice } from "@/lib/types";
+import LogHearingModal from "@/components/LogHearingModal";
+import CreateInvoiceModal from "@/components/CreateInvoiceModal";
+import ViewInvoiceModal from "@/components/ViewInvoiceModal";
 
 const TABS = ["Overview", "Strategy Note", "Hearings", "Documents", "Invoices", "AI Trail", "Audit"];
 
@@ -28,6 +31,11 @@ const SKILL_MAP: Record<string, string> = {
   "Client Update Email": "skill_12_client_update",
   "Invoice Draft": "skill_11_invoice_generation",
   "Hearing Summary": "skill_09_hearing_summary",
+  "Deviation Flagging": "skill_06_deviation_flagging",
+  "Arguments Brief": "skill_07_arguments_brief",
+  "Legal Memo": "skill_08_legal_memo",
+  "Order Analysis": "skill_10_order_analysis",
+  "Matter Close Summary": "skill_13_matter_close",
 };
 
 export default function MatterDetailPage() {
@@ -64,6 +72,18 @@ export default function MatterDetailPage() {
     queryKey: ["auditLogs", matterId],
     queryFn: () => api.getAuditLogs(matterId),
   });
+
+  const [showLogHearingModal, setShowLogHearingModal] = useState(false);
+  const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
+  const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+  const [documents, setDocuments] = useState<any[]>([
+    { id: "doc-1", title: "Commercial Construction Agreement", category: "Contract", date: "2024-01-15", size: "2.4 MB" },
+    { id: "doc-2", title: "Demand Notice & Courier Receipts", category: "Legal Notice", date: "2024-02-10", size: "840 KB" },
+    { id: "doc-3", title: "Section 36 Execution Petition Draft", category: "Pleadings", date: "2024-03-01", size: "1.2 MB" }
+  ]);
+  const [newDocTitle, setNewDocTitle] = useState("");
+  const [newDocCategory, setNewDocCategory] = useState("Pleadings");
+  const [showUploadDoc, setShowUploadDoc] = useState(false);
 
   // Filter ai outputs from the audit logs
   const aiOutputs = auditLogs.filter((log: any) => log.action.startsWith("ai_"));
@@ -470,7 +490,11 @@ export default function MatterDetailPage() {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 700 }}>Hearing Timeline</h2>
-                <button className="btn-primary" style={{ padding: "9px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}>
+                <button
+                  onClick={() => setShowLogHearingModal(true)}
+                  className="btn-primary"
+                  style={{ padding: "9px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}
+                >
                   <Plus size={14} /> Log Hearing
                 </button>
               </div>
@@ -502,7 +526,25 @@ export default function MatterDetailPage() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
                           {h.client_update_approved
                             ? <span className="badge badge-approved" style={{ fontSize: 10 }}><Send size={9} /> Client notified</span>
-                            : <button className="btn-gold" style={{ fontSize: 11, padding: "5px 10px", display: "flex", alignItems: "center", gap: 5 }}>
+                            : <button
+                                onClick={async () => {
+                                  try {
+                                    toast.loading("Generating client update email...", { id: "gen-update" });
+                                    await api.runAiSkill("skill_12_client_update", matterId, {
+                                      hearing_details: `Court: ${matter?.court_name}, Judge: ${h.judge_name || "Hon'ble Judge"}, Order: ${h.order_summary || h.outcome || "Hearing completed"}`,
+                                      client_name: matter?.client_name,
+                                      advocate_name: "Arjun Sharma, Senior Advocate"
+                                    });
+                                    toast.success("Client update email draft generated! Review in AI Queue or AI Trail tab.", { id: "gen-update" });
+                                    queryClient.invalidateQueries({ queryKey: ["hearings", matterId] });
+                                    queryClient.invalidateQueries({ queryKey: ["auditLogs", matterId] });
+                                  } catch (err: any) {
+                                    toast.error(err.message || "Failed to generate update", { id: "gen-update" });
+                                  }
+                                }}
+                                className="btn-gold"
+                                style={{ fontSize: 11, padding: "5px 10px", display: "flex", alignItems: "center", gap: 5 }}
+                              >
                                 <Brain size={11} /> Generate Update
                               </button>
                           }
@@ -604,20 +646,200 @@ export default function MatterDetailPage() {
             </div>
           )}
 
-          {/* Placeholder tabs */}
-          {["Documents", "Invoices"].includes(activeTab) && (
-            <div className="card" style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>
-              <div style={{ fontSize: 36, marginBottom: 12, opacity: 0.4 }}>
-                {activeTab === "Documents" ? "📄" : "🧾"}
+          {/* INVOICES TAB */}
+          {activeTab === "Invoices" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div>
+                  <h2 style={{ fontSize: 16, fontWeight: 700 }}>Matter Invoices</h2>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                    {invoices.length} invoices · Total Billed: ₹{invoices.reduce((s: number, inv: Invoice) => s + (inv.total_amount || 0), 0).toLocaleString("en-IN")}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowCreateInvoiceModal(true)}
+                  className="btn-primary"
+                  style={{ padding: "9px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}
+                >
+                  <Plus size={14} /> Generate Invoice
+                </button>
               </div>
-              <p style={{ fontWeight: 600, marginBottom: 8 }}>No {activeTab.toLowerCase()} yet</p>
-              <button className="btn-primary" style={{ margin: "0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 18px", fontSize: 13 }}>
-                <Plus size={14} /> Add {activeTab === "Documents" ? "Document" : "Invoice"}
-              </button>
+
+              {invoices.length === 0 ? (
+                <div className="card" style={{ padding: 48, textAlign: "center", color: "var(--text-muted)" }}>
+                  <Receipt size={36} style={{ margin: "0 auto 12px", opacity: 0.4 }} />
+                  <p style={{ fontWeight: 600, marginBottom: 8 }}>No invoices generated for this matter yet</p>
+                  <button
+                    onClick={() => setShowCreateInvoiceModal(true)}
+                    className="btn-primary"
+                    style={{ margin: "0 auto", display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 18px", fontSize: 13 }}
+                  >
+                    <Plus size={14} /> Create First Invoice
+                  </button>
+                </div>
+              ) : (
+                <div className="table-container">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Invoice #</th><th>Milestone</th><th>Base Fee</th><th>GST (18%)</th><th>Total</th><th>Status</th><th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoices.map((inv: Invoice) => (
+                        <tr key={inv.id}>
+                          <td className="font-mono" style={{ fontSize: 12, color: "var(--accent-indigo)" }}>{inv.invoice_number}</td>
+                          <td style={{ fontSize: 13, fontWeight: 600 }}>{inv.milestone_name}</td>
+                          <td className="font-mono" style={{ fontSize: 13 }}>₹{inv.amount?.toLocaleString("en-IN")}</td>
+                          <td className="font-mono" style={{ fontSize: 13, color: "var(--text-muted)" }}>₹{inv.gst_amount?.toLocaleString("en-IN")}</td>
+                          <td className="font-mono" style={{ fontSize: 13, fontWeight: 700 }}>₹{inv.total_amount?.toLocaleString("en-IN")}</td>
+                          <td>
+                            <span className={`badge badge-${inv.status === "paid" || inv.status === "approved" || inv.status === "sent" ? "approved" : "pending"}`} style={{ fontSize: 11 }}>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => setViewingInvoice(inv)}
+                              className="btn-ghost"
+                              style={{ padding: "5px 10px", fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}
+                            >
+                              <Eye size={12} /> View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DOCUMENTS TAB */}
+          {activeTab === "Documents" && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div>
+                  <h2 style={{ fontSize: 16, fontWeight: 700 }}>Matter Documents</h2>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)" }}>Privileged repository with AI analysis readiness</div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => triggerAI("Deviation Flagging")}
+                    className="btn-secondary"
+                    style={{ padding: "9px 14px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <Sparkles size={13} color="var(--accent-indigo)" /> AI Clause Check
+                  </button>
+                  <button
+                    onClick={() => setShowUploadDoc(!showUploadDoc)}
+                    className="btn-primary"
+                    style={{ padding: "9px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}
+                  >
+                    <Plus size={14} /> Add Document
+                  </button>
+                </div>
+              </div>
+
+              {showUploadDoc && (
+                <div className="card" style={{ padding: 20, marginBottom: 20, border: "1px solid var(--accent-indigo)" }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Upload New Document</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 180px auto", gap: 12, alignItems: "center" }}>
+                    <input
+                      className="form-input"
+                      placeholder="Document Title (e.g. Counter Affidavit, Arbitral Award)"
+                      value={newDocTitle}
+                      onChange={(e) => setNewDocTitle(e.target.value)}
+                    />
+                    <select
+                      className="form-input"
+                      value={newDocCategory}
+                      onChange={(e) => setNewDocCategory(e.target.value)}
+                    >
+                      <option value="Contract">Contract</option>
+                      <option value="Pleadings">Pleadings</option>
+                      <option value="Court Order">Court Order</option>
+                      <option value="Legal Notice">Legal Notice</option>
+                      <option value="Evidence">Evidence</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (!newDocTitle.trim()) return toast.error("Enter document title");
+                        setDocuments([
+                          { id: `doc-${Date.now()}`, title: newDocTitle, category: newDocCategory, date: new Date().toISOString().slice(0, 10), size: "1.5 MB" },
+                          ...documents
+                        ]);
+                        setNewDocTitle("");
+                        setShowUploadDoc(false);
+                        toast.success("Document added to matter repository");
+                      }}
+                      className="btn-primary"
+                      style={{ padding: "10px 18px", fontSize: 13 }}
+                    >
+                      Save Document
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="table-container">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Document Name</th><th>Category</th><th>Upload Date</th><th>Size</th><th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {documents.map((d: any) => (
+                      <tr key={d.id}>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <FileText size={16} color="var(--accent-indigo)" />
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>{d.title}</span>
+                          </div>
+                        </td>
+                        <td><span className="badge badge-draft" style={{ fontSize: 11 }}>{d.category}</span></td>
+                        <td style={{ fontSize: 12, color: "var(--text-muted)" }}>{d.date}</td>
+                        <td className="font-mono" style={{ fontSize: 12, color: "var(--text-muted)" }}>{d.size}</td>
+                        <td>
+                          <button
+                            onClick={() => toast.success(`Opening document: ${d.title}`)}
+                            className="btn-ghost"
+                            style={{ padding: "5px 10px", fontSize: 12 }}
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </motion.div>
       </AnimatePresence>
+
+      <LogHearingModal
+        isOpen={showLogHearingModal}
+        onClose={() => setShowLogHearingModal(false)}
+        defaultMatterId={matterId}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["hearings", matterId] })}
+      />
+
+      <CreateInvoiceModal
+        isOpen={showCreateInvoiceModal}
+        onClose={() => setShowCreateInvoiceModal(false)}
+        defaultMatterId={matterId}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["invoices", matterId] })}
+      />
+
+      <ViewInvoiceModal
+        invoice={viewingInvoice}
+        onClose={() => setViewingInvoice(null)}
+        onUpdated={() => queryClient.invalidateQueries({ queryKey: ["invoices", matterId] })}
+      />
     </div>
   );
 }
