@@ -46,7 +46,7 @@ export default function AIQueuePage() {
   });
 
   const handleApprove = (id: string) => {
-    reviewMutation.mutate({ id, status: "approved", finalContent: editing ? editContent : selected?.final_output || selected?.generated_content });
+    reviewMutation.mutate({ id, status: "approved", finalContent: editing ? editContent : selected?.final_output || selected?.raw_output || selected?.generated_content });
   };
 
   const handleReject = (id: string) => {
@@ -169,7 +169,7 @@ export default function AIQueuePage() {
                     </div>
                   </div>
                   <button
-                    onClick={() => { setEditing(!editing); setEditContent(selected.final_output || selected.generated_content); }}
+                    onClick={() => { setEditing(!editing); setEditContent(selected.final_output || selected.raw_output || selected.generated_content || ""); }}
                     className="btn-secondary"
                     style={{ padding: "7px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 5 }}
                   >
@@ -207,7 +207,7 @@ export default function AIQueuePage() {
                     fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, lineHeight: 1.8,
                     color: "var(--text-secondary)", whiteSpace: "pre-wrap", maxHeight: 460, overflowY: "auto"
                   }}>
-                    {selected.final_output || selected.generated_content}
+                    {selected.final_output || selected.raw_output || selected.generated_content || "No content generated yet."}
                   </div>
                 )}
 

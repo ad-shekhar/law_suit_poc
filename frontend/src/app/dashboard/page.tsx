@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Briefcase, Calendar, Brain, Receipt, TrendingUp,
   Clock, CheckCircle, AlertTriangle, ArrowRight,
-  Scale, FileText, Lock, Zap, Users
+  Scale, FileText, Lock, Zap, Users, Sparkles
 } from "lucide-react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
@@ -389,9 +389,10 @@ export default function DashboardPage() {
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
-                { label: "Add Hearing Log", icon: Calendar, href: "/dashboard/hearings/new", show: true },
+                { label: "AI Matter Intake", icon: Sparkles, href: "/dashboard/matters/intake", show: isSenior },
+                { label: "Add Hearing Log", icon: Calendar, href: "/dashboard/hearings", show: true },
                 { label: "Create New Matter", icon: Briefcase, href: "/dashboard/matters/new", show: isSenior },
-                { label: "Generate Invoice", icon: Receipt, href: "/dashboard/invoices/new", show: isFounder },
+                { label: "Generate Invoice", icon: Receipt, href: "/dashboard/invoices", show: isFounder },
                 { label: "Upload Document", icon: FileText, href: "/dashboard/documents", show: true },
                 { label: "View Audit Trail", icon: Scale, href: "/dashboard/audit", show: isFounder },
               ].filter(a => a.show).map((action) => (

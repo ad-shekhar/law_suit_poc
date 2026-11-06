@@ -6,11 +6,16 @@ import { User, Matter, Hearing, Invoice, AiOutput, DashboardSummary } from "./ty
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 function getHeaders(): HeadersInit {
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   
   if (typeof window !== "undefined") {
+    const token = sessionStorage.getItem("legalos_token");
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
     const storedUser = sessionStorage.getItem("legalos_user");
     if (storedUser) {
       try {

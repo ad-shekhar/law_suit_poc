@@ -1,12 +1,18 @@
 "use client";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Plus, Clock, Scale, ChevronRight } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Calendar, Plus, Clock, Scale, ChevronRight, CheckCircle, Send, Sparkles } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Hearing } from "@/lib/types";
 import { format } from "date-fns";
+import toast from "react-hot-toast";
+import LogHearingModal from "@/components/LogHearingModal";
 
 export default function HearingsPage() {
+  const queryClient = useQueryClient();
+  const [showLogModal, setShowLogModal] = useState(false);
+
   const { data: hearings = [], isLoading } = useQuery({
     queryKey: ["allHearings"],
     queryFn: () => api.getHearings(),
@@ -15,6 +21,16 @@ export default function HearingsPage() {
   const now = new Date();
   const upcoming = hearings.filter((h: Hearing) => new Date(h.hearing_date) >= now);
   const past = hearings.filter((h: Hearing) => new Date(h.hearing_date) < now);
+
+  const handleApproveUpdate = async (hearingId: string) => {
+    try {
+      await api.approveClientUpdate(hearingId);
+      toast.success("Client update email approved and marked as dispatched!");
+      queryClient.invalidateQueries({ queryKey: ["allHearings"] });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to approve client update");
+    }
+  };
 
   if (isLoading) {
     return <div style={{ padding: 40, textAlign: "center" }}>Loading hearings...</div>;
@@ -27,7 +43,11 @@ export default function HearingsPage() {
           <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em", marginBottom: 4 }}>Hearings</h1>
           <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>{upcoming.length} upcoming · {past.length} completed</p>
         </div>
-        <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px" }}>
+        <button
+          onClick={() => setShowLogModal(true)}
+          className="btn-primary"
+          style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px" }}
+        >
           <Plus size={16} /> Log Hearing
         </button>
       </div>
@@ -70,7 +90,6 @@ export default function HearingsPage() {
                 </div>
               </div>
               <span className="font-mono" style={{ fontSize: 12, color: "var(--accent-indigo)" }}>{h.matter?.matter_number || "—"}</span>
-              <ChevronRight size={16} color="var(--text-muted)" />
             </motion.div>
           ))
         )}
@@ -83,7 +102,7 @@ export default function HearingsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th>Date</th><th>Matter</th><th>Court</th><th>Outcome</th><th></th>
+              <th>Date</th><th>Matter</th><th>Court</th><th>Outcome</th><th>Client Update</th>
             </tr>
           </thead>
           <tbody>
@@ -103,13 +122,33 @@ export default function HearingsPage() {
                   </td>
                   <td style={{ fontSize: 13, color: "var(--text-secondary)" }}>{h.matter?.court_name || h.court_room || "Court"}</td>
                   <td style={{ fontSize: 13 }}>{h.outcome || "—"}</td>
-                  <td><button className="btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }}>View</button></td>
+                  <td>
+                    {h.client_update_approved ? (
+                      <span className="badge badge-approved" style={{ fontSize: 10, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <Send size={10} /> Dispatched
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleApproveUpdate(h.id)}
+                        className="btn-gold"
+                        style={{ padding: "4px 8px", fontSize: 11, display: "inline-flex", alignItems: "center", gap: 4 }}
+                      >
+                        <Sparkles size={10} /> Approve Draft
+                      </button>
+                    )}
+                  </td>
                 </motion.tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      <LogHearingModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["allHearings"] })}
+      />
     </div>
   );
 }
