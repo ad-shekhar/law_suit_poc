@@ -1,0 +1,17 @@
+{
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "include": ["src", "main.py"],
+  "exclude": ["**/__pycache__", "**/.venv"],
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "extraPaths": ["src/.."],
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ]
+}
